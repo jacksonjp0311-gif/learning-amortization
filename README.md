@@ -142,7 +142,7 @@ When tasks compose, the library pays for itself almost at once. When they do not
 
 Irrelevant-state scaling (G57b, seeds 231–237): with 16,000 unrelated facts the per-task cost grows by $R^{1\mathrm{k}}_{16000}=2.90$ [2.57, 3.20] relative to 1,000 facts (G57 engine on the same seeds: 17.48), and $R_{16000}=3.75$ [3.22, 4.20] relative to none (G57 engine: 91.2). It is not flat (the pre-registered tolerance was 1.25).
 
-**What it shows.** No positive amortization in any experiment, so learning to learn is not shown. The learner does reuse what it learns (147 of 252 compositional tasks through a library capability, 0 wrong verified answers), but reuse costs more than it saves. The penalty breaks down into maintenance, library scanning, per-call state work and process start-up, and exact engineering cut the unrelated-task gap from 18.0× to 3.21× without changing a reply. Rows use different seeds; G57b had not been independently verified when this was written. Section 11 turns the lessons into results with proofs:
+**What it shows.** No positive amortization in any experiment, so learning to learn is not shown. The learner does reuse what it learns (147 of 252 compositional tasks through a library capability, 0 wrong verified answers), but reuse costs more than it saves. The penalty breaks down into maintenance, library scanning, per-call state work and process start-up, and exact engineering cut the unrelated-task gap from 18.0× to 3.21× without changing a reply. Rows use different seeds; every experiment, G57b included (`verify-8994490`), has an independent verification report. Section 11 turns the lessons into results with proofs:
 
 | Result | Statement |
 |---|---|

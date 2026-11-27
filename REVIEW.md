@@ -133,10 +133,14 @@ Every number in Sections 10–11 was traced to PacketLM `g44-canonical-engine` a
 
 ### Claims that could not be sourced
 
-None of the numbers in the paper are unsourced. Two items are *not* independently verified, and the paper says so: G57b has no verification report among the sources (a verification was reported to be running, but no report was available), and the lock times of registered runs are the experimenter's statements (verify-35bda6b, Low 2).
+None of the numbers in the paper are unsourced. One item is *not* independently verifiable, and the paper says so: the lock times of registered runs are the experimenter's statements (verify-35bda6b, Low 2).
 
 ### Build
 
 `latexmk` clean: 0 undefined references, 0 overfull boxes, 0 warnings other than package-info lines; 23 pages (was 14). Markdown regenerated with `scripts/build_markdown.py`, which now maps remark labels and counts tabularx columns.
 
 **Left open.** The controls of Table 1 beyond empty-memory, primitive-only and frozen, and the second-order instruments of Section 5, have not been run on PacketLM. The model assumptions of Props. 8 and 10 are not tested against data beyond the qualitative checks shown.
+
+### Addendum: G57b verification
+
+`VERIFY_8994490.md` (PacketLM branch `verify-8994490` @ `9bd3569`) is now cited in Section 10.5 and `case_study/packetlm/SOURCES.md`. Checked against the report: no High/Medium; 210,907 calls, 0 differences; 16/16 contrasts and part S exact; 7-seed rerun hash-identical, Xj R1k_16000 2.62 [2.44, 2.83]; three Low findings as summarized in the paper. The "G57b not independently verified" caveats in the abstract, Section 10.5, standard S7, the limitations and the README were removed.

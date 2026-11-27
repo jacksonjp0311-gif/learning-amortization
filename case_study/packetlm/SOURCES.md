@@ -60,5 +60,5 @@ Xs/Xi/Xj): `mean_task_cpu_s`, `amort_task_cpu_s` (G57b only), `known`, `reply_st
 | `VERIFY_3e2783c.md` (branch `verify-3e2783c`) | G54 reproduction (13 values); `--lean` not exact in general |
 | `VERIFY_d6cbcf3.md` (branch `verify-d6cbcf3`) | G56 reproduction (20 values, 77 hashes); long-lived protocol exactness |
 | `VERIFY_35bda6b.md` (branch `verify-35bda6b`) | G57 reproduction (18 contrasts); 47,105-call differential; part S Low 1 |
+| `VERIFY_8994490.md` (branch `verify-8994490` @ `9bd3569`) | G57b: no High/Medium; 210,907-call differential, 0 differences; 16/16 contrasts and part S exact; 7-seed part S rerun hash-identical (Xj R1k_16000 2.62 [2.44, 2.83]); Lows 1–3 (partial index-guard coverage; deferred but fail-closed detection; amortized R1k_16000 3.96 → 4.23 if the redundant validation is charged) |
 
-G57b (commit 8994490) had no verification report among these sources when this version was written.

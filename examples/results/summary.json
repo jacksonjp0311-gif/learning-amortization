@@ -1,0 +1,67 @@
+{
+  "WARNING": "SYNTHETIC toy example; not a PacketLM or any real-system result.",
+  "compositional": {
+    "S": 20,
+    "N": 12,
+    "A_N": 0.9170583163854323,
+    "A_N_ci95": [
+      0.8693312882258776,
+      0.9412019898563387
+    ],
+    "A_N_delta_se": 0.017233252330551334,
+    "sign_flip_p": 9.99990000099999e-06,
+    "geometric_mean_form": 0.8746014745143454,
+    "tail_A_last4": 0.933313372112164,
+    "break_even_n_mean_costs": 2,
+    "trend_slope_log_ratio_per_task": 0.14711649430189558,
+    "trend_slope_ci95": [
+      0.10324288964560877,
+      0.19345526475648153
+    ],
+    "component_contributions": {
+      "acquisition": 0.8466472845865645,
+      "execution": 0.0,
+      "maintenance": -0.005248234887059036,
+      "retrieval": -0.002020901586460559,
+      "storage": -6.444960335631245e-05,
+      "verification": 0.07774461787574381
+    },
+    "censored_or_failed_tasks": {
+      "base": 12,
+      "library": 0
+    },
+    "total_tasks_per_arm": 240
+  },
+  "unrelated": {
+    "S": 20,
+    "N": 12,
+    "A_N": -2.261390519481459,
+    "A_N_ci95": [
+      -2.5389903098052837,
+      -1.9749924246605142
+    ],
+    "A_N_delta_se": 0.1468335228855566,
+    "sign_flip_p": 9.99990000099999e-06,
+    "geometric_mean_form": -2.181972400972131,
+    "tail_A_last4": -4.305580794426832,
+    "break_even_n_mean_costs": null,
+    "trend_slope_log_ratio_per_task": -0.13741723426003938,
+    "trend_slope_ci95": [
+      -0.15403064965193064,
+      -0.1189930789550158
+    ],
+    "component_contributions": {
+      "acquisition": -1.9931816701289107,
+      "execution": 0.0,
+      "maintenance": -0.03653814138986804,
+      "retrieval": -0.09110106617833333,
+      "storage": -0.00043921046345823955,
+      "verification": -0.14013043132088848
+    },
+    "censored_or_failed_tasks": {
+      "base": 1,
+      "library": 1
+    },
+    "total_tasks_per_arm": 240
+  }
+}

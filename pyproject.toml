@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "learning-amortization"
+version = "0.1.0"
+description = "Reference implementation of the learning-amortization metric: does learning make future learning cheaper?"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "James Jackson" }]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+figures = ["matplotlib>=3.5"]
+
+[project.urls]
+Repository = "https://github.com/jacksonjp0311-gif/learning-amortization"
+
+[tool.setuptools]
+packages = ["amortization"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

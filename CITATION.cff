@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this metric, protocol or code, please cite the white paper."
+title: "Learning Amortization: Measuring Whether Learning Makes Future Learning Cheaper"
+type: software
+authors:
+  - family-names: Jackson
+    given-names: James
+version: 0.1.0
+date-released: 2026-11-26
+license: MIT
+repository-code: "https://github.com/jacksonjp0311-gif/learning-amortization"
+keywords:
+  - continual learning
+  - learning to learn
+  - forward transfer
+  - library learning
+  - evaluation methodology
+preferred-citation:
+  type: report
+  title: "Learning Amortization: Measuring Whether Learning Makes Future Learning Cheaper"
+  authors:
+    - family-names: Jackson
+      given-names: James
+  year: 2026
+  month: 11
+  status: preprint
+  url: "https://github.com/jacksonjp0311-gif/learning-amortization"

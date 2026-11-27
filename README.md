@@ -9,7 +9,7 @@
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![paper: CC BY 4.0](https://img.shields.io/badge/paper-CC%20BY%204.0-lightgrey.svg)
 ![python: 3.9+](https://img.shields.io/badge/python-3.9%2B-informational.svg)
-![tests: 32 passing locally](https://img.shields.io/badge/tests-32%20passing%20locally-brightgreen.svg)
+![tests: 36 passing locally](https://img.shields.io/badge/tests-36%20passing%20locally-brightgreen.svg)
 
 </div>
 
@@ -41,7 +41,7 @@ All results are proved in the paper and each has an executable test in [`tests/`
 | Result | Statement |
 |---|---|
 | Range, sign, units (Prop. 1) | $A_n \le 1$; $A_n$ is unbounded below; it is invariant to the unit of cost but **not** to relative prices across resources, so results must be reported per resource |
-| Weighted average (Prop. 1v) | $A_n = \sum_{i=0}^n \omega_i a_i$ with $\omega_i = c_i(R)/C_R(n)$, so expensive tasks dominate by design |
+| Weighted average (Prop. 1v) | $A_n = \sum_{i} \omega_i a_i$ with $\omega_i = c_i(R)/C_R(n)$ (plus a pure penalty for setup the reference does not pay), so expensive tasks dominate by design |
 | Decomposition (Prop. 2) | $A_n = \sum_k D_{n,k}$, which shows exactly which component saves and which is overhead |
 | Asymptotics (Prop. 3) | $A_n \to 1-\gamma_L/\gamma_R$; one-time costs vanish, so $A_\infty$ must be reported together with $A_N$ and break-even |
 | Break-even (Prop. 4) | Under constant costs, $n^\star = \lfloor \Delta_0/\delta \rfloor + 1$ |
@@ -56,7 +56,7 @@ All results are proved in the paper and each has an executable test in [`tests/`
 git clone https://github.com/jacksonjp0311-gif/learning-amortization
 cd learning-amortization
 pip install -e ".[test,figures]"      # numpy is the only runtime dependency
-pytest -q                             # 32 tests: every proposition is checked
+pytest -q                             # 36 tests: every proposition is checked
 python examples/synthetic_toy.py      # synthetic worked example (~3 s)
 ```
 
@@ -133,7 +133,8 @@ The motivating application is [PacketLM](https://github.com/jacksonjp0311-gif/Pa
 
 ```
 amortization/          reference implementation (numpy only)
-  metric.py            A_n, marginal, tail, break-even, decomposition, cost logs
+  metric.py            A_n, marginal, tail, break-even, decomposition, novelty-stratified,
+                       probe curve, cost logs
   stats.py             ratio-of-means estimator, delta-method SE, paired bootstrap,
                        exact sign-flip test, trend slope
   transfer.py          forward-transfer link (Prop. 5)
@@ -160,6 +161,7 @@ REVIEW.md              independent review notes and what was fixed
 | Def. 7, Prop. 4 break-even | `break_even` |
 | Prop. 2 decomposition | `component_contributions` |
 | Prop. 5 forward transfer | `transfer.threshold_cost_integral`, `transfer.forward_transfer_cw` |
+| Def. 8 novelty-stratified, Def. 9 probe curve | `novelty_stratified_amortization`, `probe_amortization` |
 | Sec. 5.2 trend | `trend_slope` |
 | Sec. 6.2 estimators and tests | `point_estimate`, `delta_method_se`, `bootstrap_ci`, `sign_flip_test`, `estimate` |
 

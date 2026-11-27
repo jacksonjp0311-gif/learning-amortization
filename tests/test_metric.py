@@ -13,6 +13,8 @@ from amortization import (
     break_even,
     component_contributions,
     marginal_amortization,
+    novelty_stratified_amortization,
+    probe_amortization,
     tail_amortization,
 )
 
@@ -62,6 +64,20 @@ def test_weighted_average_identity():
             a = 1 - cc[: n + 1] / cb[: n + 1]
             assert amortization(cc, cb, n) == pytest.approx(float(w @ a), rel=1e-12, abs=1e-12)
             assert math.isclose(w.sum(), 1.0)
+
+
+def test_weighted_average_identity_with_zero_reference_setup():
+    # Prop. 1(v), general form: tasks with c_i(R) = 0 enter as -c_i(L)/C_R(n).
+    for _ in range(100):
+        cc, cb = rand_costs(8)
+        cb[0] = 0.0
+        cb[3] = 0.0
+        n = 8
+        P = [i for i in range(n + 1) if cb[i] > 0]
+        Z = [i for i in range(n + 1) if cb[i] == 0]
+        Cb = cb.sum()
+        val = sum(cb[i] / Cb * (1 - cc[i] / cb[i]) for i in P) - sum(cc[i] / Cb for i in Z)
+        assert amortization(cc, cb, n) == pytest.approx(val, rel=1e-12, abs=1e-12)
 
 
 def test_curve_matches_pointwise():
@@ -154,8 +170,38 @@ def test_costlog_roundtrip_and_scalarization(tmp_path):
     assert amortization(log2.task_costs("cont", 1, w), log2.task_costs("base", 1, w)) == pytest.approx(1 - 7 / 20)
 
 
+def test_missing_task_records_are_rejected():
+    log = CostLog([
+        CostRecord("cont", 1, 1, "acquisition", "ops", 1.0),
+        CostRecord("cont", 1, 3, "acquisition", "ops", 1.0),
+        CostRecord("base", 1, 1, "acquisition", "ops", 1.0),
+        CostRecord("base", 1, 2, "acquisition", "ops", 1.0),
+        CostRecord("base", 1, 3, "acquisition", "ops", 1.0),
+    ])
+    with pytest.raises(ValueError, match="no cost records for tasks \\[2\\]"):
+        log.task_costs("cont", 1)
+    assert np.allclose(log.task_costs("base", 1), [0, 1, 1, 1])
+
+
 def test_record_validation():
     with pytest.raises(ValueError):
         CostRecord("a", 1, 1, "thinking", "ops", 1.0)
     with pytest.raises(ValueError):
         CostRecord("a", 1, 1, "acquisition", "ops", -1.0)
+
+
+def test_novelty_stratified():
+    cc = [3, 1, 10, 1, 10]
+    cb = [0, 10, 10, 10, 10]
+    novel = [False, False, True, False, True]
+    # only tasks 2 and 4 count; setup of both arms kept
+    assert novelty_stratified_amortization(cc, cb, novel) == pytest.approx(1 - (3 + 20) / (0 + 20))
+    # all-novel mask reduces to A_n
+    assert novelty_stratified_amortization(cc, cb, [True] * 5) == pytest.approx(amortization(cc, cb))
+    with pytest.raises(ValueError):
+        novelty_stratified_amortization(cc, cb, [True] + [False] * 4)
+
+
+def test_probe_curve():
+    P = [[10, 20], [8, 16], [5, 10]]
+    assert np.allclose(probe_amortization(P), [0.0, 0.2, 0.5])

@@ -153,6 +153,49 @@ def component_contributions(
     return {k: (cb[k][: n + 1].sum() - cc[k][: n + 1].sum()) / Cb for k in keys}
 
 
+def novelty_stratified_amortization(
+    c_cont: Sequence[float], c_base: Sequence[float], novel: Sequence[bool], n: Optional[int] = None
+) -> float:
+    """A_n^nov (Definition 8): amortization restricted to tasks labelled novel in advance.
+
+    ``novel`` has length N+1 (index 0 ignored). Both arms' setup costs c_0 are kept.
+    The labels must come from the task generator, never from outcomes.
+    """
+    cc, cb = _check_pair(c_cont, c_base)
+    mask = np.asarray(novel, dtype=bool)
+    if mask.shape != cc.shape:
+        raise ValueError("novel mask must have length N+1")
+    N = cc.size - 1
+    n = N if n is None else int(n)
+    if not 1 <= n <= N:
+        raise ValueError(f"n must be in [1, {N}]")
+    idx = np.nonzero(mask[1 : n + 1])[0] + 1
+    if idx.size == 0:
+        raise ValueError("no novel tasks in the horizon")
+    den = cb[0] + cb[idx].sum()
+    if den <= 0:
+        raise ValueError("reference cost on novel tasks must be positive")
+    return 1.0 - (cc[0] + cc[idx].sum()) / den
+
+
+def probe_amortization(probe_costs: Sequence[Sequence[float]]) -> np.ndarray:
+    """Fork-and-discard probe curve Pi(k) (Definition 9).
+
+    ``probe_costs[k][j]`` is the cost-to-target of sealed probe j solved from a
+    discarded copy of the state after k sequence tasks (row 0 = initial state M_0).
+    Returns Pi(0..K), with Pi(0) = 0 by construction.
+    """
+    P = np.asarray(probe_costs, dtype=float)
+    if P.ndim != 2 or P.shape[0] < 1 or P.shape[1] < 1:
+        raise ValueError("probe_costs must be a 2-D array (K+1, m)")
+    if np.any(~np.isfinite(P)) or np.any(P < 0):
+        raise ValueError("probe costs must be finite and non-negative")
+    base = P[0].sum()
+    if base <= 0:
+        raise ValueError("probe cost from the initial state must be positive")
+    return 1.0 - P.sum(axis=1) / base
+
+
 # ---------------------------------------------------------------------------
 # Raw cost logs
 # ---------------------------------------------------------------------------
@@ -261,6 +304,14 @@ class CostLog:
                 out[r.component][r.task] += self._price(r.resource, weights) * r.amount
         if not found:
             raise KeyError(f"no records for arm={arm!r}, seed={seed}")
+        seen = {r.task for r in self.records if r.arm == arm and r.seed == seed}
+        missing = sorted(set(range(1, N + 1)) - seen)
+        if missing:
+            # A task with no record would silently count as free; refuse instead.
+            raise ValueError(
+                f"arm={arm!r}, seed={seed} has no cost records for tasks {missing[:10]}"
+                f"{'...' if len(missing) > 10 else ''}; log an explicit zero if a task really cost nothing"
+            )
         return out
 
     def task_costs(

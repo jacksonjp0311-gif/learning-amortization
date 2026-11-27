@@ -60,7 +60,12 @@ md = subprocess.run(
 ).stdout
 
 # display math on its own lines for GitHub
-md = re.sub(r"\s*\$\$(.+?)\$\$\s*", lambda m: "\n\n$$\n" + m.group(1).strip() + "\n$$\n\n", md, flags=re.S)
+def _display(m):
+    body = "\n".join(line.strip() for line in m.group(1).strip().splitlines())
+    return "\n\n$$\n" + body + "\n$$\n\n"
+
+
+md = re.sub(r"\s*\$\$(.+?)\$\$\s*", _display, md, flags=re.S)
 md = re.sub(r"\n{3,}", "\n\n", md)
 md = re.sub(r"<a href=\"#[^\"]*\" data-reference-type=\"[^\"]*\"\s*data-reference=\"[^\"]*\">([^<]*)</a>", r"\1", md)
 

@@ -34,7 +34,7 @@ The idea that experience with earlier tasks should improve learning of later one
 
 **Continual-learning metrics.**
 
-Lopez-Paz and Ranzato (2017) define backward transfer (BWT) and forward transfer (FWT) from an accuracy matrix $R_{j,i}$, the test accuracy on task $i$ after training on task $j$. FWT measures zero-shot accuracy on task $i$ just before it is trained, relative to a random-initialisation baseline. It is an accuracy quantity and carries no cost. Dı́az-Rodrı́guez et al. (2018) add efficiency criteria, including model-size efficiency, sample-storage efficiency and computational efficiency, and combine them with accuracy-based ones in a weighted score. That work is the closest prior art for charging resources in continual learning, though it does not define cost at matched accuracy or a sequence-level savings ratio. Chaudhry et al. (2018) introduce intransigence (inability to learn new tasks), and Chaudhry et al. (2019) introduce the learning-curve area (LCA) as a measure of how quickly a learner acquires new tasks. Wołczyk et al. (2021) measure forward transfer as the normalised area between a continual learner’s training curve and a from-scratch reference; Proposition 5 shows that this is a special case of the ratio studied here. Veniat, Denoyer, and Ranzato (2021) probe several kinds of transfer and report them together with how fast the model grows in size. Chen and Liu (2018) survey lifelong learning more broadly.
+Lopez-Paz and Ranzato (2017) define backward transfer (BWT) and forward transfer (FWT) from an accuracy matrix $R_{j,i}$, the test accuracy on task $i$ after training on task $j$. FWT measures zero-shot accuracy on task $i$ just before it is trained, relative to a random-initialisation baseline. It is an accuracy quantity and carries no cost. Dı́az-Rodrı́guez et al. (2018) add efficiency criteria, including model-size efficiency, sample-storage efficiency and computational efficiency, and combine them with accuracy-based ones in a weighted score. That work is the closest prior art we found for charging resources in continual learning. As far as we can tell, it does not define cost at matched accuracy or a sequence-level savings ratio. Chaudhry et al. (2018) introduce intransigence (inability to learn new tasks), and Chaudhry et al. (2019) introduce the learning-curve area (LCA) as a measure of how quickly a learner acquires new tasks. Wołczyk et al. (2021) measure forward transfer as the normalised area between a continual learner’s training curve and a from-scratch reference; Proposition 5 shows that this is a special case of the ratio studied here. Veniat, Denoyer, and Ranzato (2021) probe several kinds of transfer and report them together with how fast the model grows in size. Chen and Liu (2018) survey lifelong learning more broadly.
 
 **Transfer metrics in reinforcement learning.**
 
@@ -81,17 +81,17 @@ $$
 
 </div>
 
-The components have the following meanings. *Acquisition* covers search, candidate generation, parameter updates and interaction with the teacher or oracle. *Verification* covers checking candidates against evidence, consistency checks and re-verification after corrections or retractions. *Storage* is the holding cost of the state, $w_{\mathrm{sto}}\int |M(t)|\,dt$ over the task’s interval, so a library that is never used still costs something. *Retrieval* covers indexing, lookup and matching of stored items, which is Minton’s match cost. *Maintenance* covers consolidation, compression, deduplication, dependency propagation, invalidation and checkpoint I/O. *Execution* is running the acquired capability.
+The components have the following meanings. *Acquisition* covers search, candidate generation, parameter updates and interaction with the teacher or oracle. *Verification* covers checking candidates against evidence, consistency checks and re-verification after corrections or retractions. *Storage* is the holding cost of the state, measured in a resource such as byte-seconds, $\int |M(t)|\,dt$ over the task’s interval, so a library that is never used still costs something. *Retrieval* covers indexing, lookup and matching of stored items, which is Minton’s match cost. *Maintenance* covers consolidation, compression, deduplication, dependency propagation, invalidation and checkpoint I/O. *Execution* is running the acquired capability.
 
 <div id="def:ctt" class="definition">
 
-**Definition 3** (Cost-to-target). Fix, before the experiment, an accuracy target $\alpha_i\in(0,1]$ and a budget $B_i>0$ for every task. Let $\mathrm{acc}_i(L,t)$ be the accuracy on $E_i$ of the hypothesis $L$ has committed to after spending cost $t$ on $T_i$. The task ends at
+**Definition 3** (Cost-to-target). Fix, before the experiment, an accuracy target $\alpha_i\in(0,1]$ and a budget $B_i>0$ for every task. Let $\mathrm{acc}_i(L,t)$ be the accuracy on $E_i$ of the hypothesis $L$ has committed to after spending cost $t$ on $T_i$. The learning phase of $T_i$ ends at a time $\tau_i(L)$ defined in one of two ways, declared in advance:
 
-$$
-\tau_i(L) = \min\Bigl(B_i,\ \inf\lbrace t\ge 0: \mathrm{acc}_i(L,t)\ge \alpha_i\rbrace \Bigr),
-$$
+- *anytime learners*: $\tau_i(L) = \min\bigl(B_i,\ \inf\lbrace t\ge 0: \mathrm{acc}_i(L,t)\ge \alpha_i\rbrace \bigr)$, where the experimenter evaluates checkpoints on $E_i$ without feeding any result back to the learner;
 
-and $c_i(L)$ is the total cost charged to $i$ by Definition 2, including post-task maintenance. The censoring indicator is $\delta_i(L)=\mathbf{1}[\mathrm{acc}_i(L,\tau_i)<\alpha_i]$. For learners that decide for themselves when to stop, $\tau_i$ is the stopping time and $\delta_i$ records whether the committed hypothesis met the target. For anytime learners, the experimenter evaluates checkpoints on $E_i$ without feeding results back.
+- *self-stopping learners*: $\tau_i(L)=\min(B_i,\sigma_i)$, where $\sigma_i$ is the moment the learner commits by its own criterion.
+
+$c_i(L)$ is the total cost charged to $i$ by Definition 2: the cost up to $\tau_i$ plus the post-task costs (consolidation, maintenance, execution on $E_i$) the attribution rule assigns to $i$. The censoring indicator is $\delta_i(L)=\mathbf{1}[\mathrm{acc}_i(L,\tau_i)<\alpha_i]$.
 
 </div>
 
@@ -152,24 +152,24 @@ All proofs are short and given inline. Each property has an executable check in 
 
 (iv) *Log form and asymmetry.* With $\ell_n = \log C_R(n) - \log C_L(n)$ (for $C_L(n)>0$), $A_n = 1-e^{-\ell_n}$. Moreover $\ell_n(R\Vert L)=-\ell_n(L\Vert R)$, whereas $A_n(R\Vert L) = -A_n(L\Vert R)/(1-A_n(L\Vert R))$.
 
-(v) *Weighted average.* If $c_i(R)>0$ for all $i\le n$, then
+(v) *Weighted average.* Let $P=\lbrace i\le n: c_i(R)>0\rbrace$ and $Z=\lbrace i\le n: c_i(R)=0\rbrace$. Then
 
 $$
 \tag{3}
-    A_n = \sum_{i=0}^{n}\omega_i\, a_i,\qquad \omega_i = \frac{c_i(R)}{C_R(n)},\quad \sum_{i=0}^n\omega_i = 1 .
+A_n = \sum_{i\in P}\omega_i\, a_i \;-\; \sum_{i\in Z}\frac{c_i(L)}{C_R(n)},\qquad \omega_i = \frac{c_i(R)}{C_R(n)},\quad \sum_{i\in P}\omega_i = 1 .
 $$
 
-In general, without that positivity condition, $A_n = \sum_{i=0}^n \bigl(c_i(R)-c_i(L)\bigr)/C_R(n)$.
+In the common case $c_0(R)=0$ (a reference with no setup), the learner’s whole setup cost enters through the second sum as a pure penalty. If $Z=\varnothing$, then $A_n$ is exactly the $\omega$-weighted mean of the marginal amortizations.
 
 </div>
 
 <div class="proof">
 
-*Proof.* (i) Costs are non-negative, so $C_L(n)/C_R(n)\ge 0$, and the ratio is $0$ only when $C_L(n)=0$. Letting $C_L(n)\to\infty$ shows that $A_n$ is unbounded below. The sign statement follows by rearranging the definition. (ii) Both cumulative costs are linear in $w$ by (1), so the common factor $\lambda$ cancels. (iii) Consider one task, $c_0=0$ and two resources (operations and memory). Let $L$ use $(1,10)$ and $R$ use $(10,0)$. With prices $(1,0.1)$, $A_1 = 1-2/10 = 0.8$. With prices $(1,10)$, $A_1 = 1-101/10 = -9.1$. (iv) $C_L/C_R = e^{-\ell_n}$. Swapping the arms gives $1-C_R/C_L = 1-1/(1-A_n)$. (v) $1-\frac{\sum_i c_i(L)}{\sum_i c_i(R)} = \sum_i \frac{c_i(R)-c_i(L)}{C_R(n)} = \sum_i \frac{c_i(R)}{C_R(n)}\Bigl(1-\frac{c_i(L)}{c_i(R)}\Bigr)$. ◻
+*Proof.* (i) Costs are non-negative, so $C_L(n)/C_R(n)\ge 0$, and the ratio is $0$ only when $C_L(n)=0$. Letting $C_L(n)\to\infty$ shows that $A_n$ is unbounded below. The sign statement follows by rearranging the definition. (ii) Both cumulative costs are linear in $w$ by (1), so the common factor $\lambda$ cancels. (iii) Consider one task, $c_0=0$ and two resources (operations and memory). Let $L$ use $(1,10)$ and $R$ use $(10,0)$. With prices $(1,0.1)$, $A_1 = 1-2/10 = 0.8$. With prices $(1,10)$, $A_1 = 1-101/10 = -9.1$. (iv) $C_L/C_R = e^{-\ell_n}$. Swapping the arms gives $1-C_R/C_L = 1-1/(1-A_n)$. (v) $1-\frac{C_L(n)}{C_R(n)} = \sum_{i\le n} \frac{c_i(R)-c_i(L)}{C_R(n)}$. For $i\in P$ the summand equals $\frac{c_i(R)}{C_R(n)}\bigl(1-\frac{c_i(L)}{c_i(R)}\bigr)=\omega_i a_i$, and for $i\in Z$ it equals $-c_i(L)/C_R(n)$. Finally $\sum_{i\in P}c_i(R)=C_R(n)$. ◻
 
 </div>
 
-Item (v) shows that cumulative amortization weights each task by its *reference* cost, so hard tasks dominate. This is deliberate, because it reports savings in the currency actually spent. An unweighted mean of $a_i$, as used for FT by Wołczyk et al. (2021), answers a different question and should be labelled as such. Because of (iv), averages across seeds or tasks should be taken on the $\ell$ scale or as ratios of sums, never as arithmetic means of $A$ values.
+Item (v) shows that cumulative amortization weights each task by its *reference* cost, so hard tasks dominate. This is deliberate, because it reports savings in the currency actually spent. An unweighted mean of $a_i$, as used for FT by Wołczyk et al. (2021), answers a different question and should be labelled as such. Because of (iv), averages of $A$ across seeds should be taken on the $\ell$ scale or as ratios of sums, never as unweighted arithmetic means of per-seed $A$ values.
 
 <div id="prop:decomp" class="proposition">
 
@@ -196,7 +196,7 @@ $$
 \sum_{k: D_{n,k}\ge 0}\bigl(C_{R,k}-C_{L,k}\bigr) \;>\; \sum_{k: D_{n,k}<0}\bigl(C_{L,k}-C_{R,k}\bigr).
 $$
 
-A memoryless reference has $C_{R,\mathrm{ret}}=C_{R,\mathrm{mnt}}=0$, so for a library learner retrieval and maintenance enter only as overheads. This is Minton’s utility problem (Minton 1990) at the scale of a whole sequence.
+A memoryless reference typically has $C_{R,\mathrm{ret}}=C_{R,\mathrm{mnt}}=0$, so for a library learner retrieval and maintenance enter only as overheads. This is Minton’s utility problem (Minton 1990) at the scale of a whole sequence.
 
 </div>
 
@@ -262,7 +262,7 @@ $$
 
 </div>
 
-FT is thus learning amortization for a single task in which cost is training steps only, the target is averaged over $[0,1]$ instead of fixed, costs are censored at the budget, and tasks are then averaged without weights. $A_n$ keeps the ratio form but fixes a declared target, charges every lifecycle component and aggregates by cost. For curves that rise and then collapse, AUC and $I$ disagree. The test suite includes a counterexample, so monotonicity (or a running maximum) must be stated whenever this correspondence is used. By contrast, GEM’s FWT (Lopez-Paz and Ranzato 2017) is a zero-shot accuracy difference. Positive FWT is neither necessary nor sufficient for $A_n>0$: a learner can be accurate zero-shot only through an expensive retrieval, or have zero zero-shot accuracy and still learn each new task cheaply.
+The same proof works in continuous time, which is the form used by Wołczyk et al. (2021). For a non-decreasing $p:[0,\Delta]\to[0,1]$, Tonelli’s theorem gives $\int_0^\Delta p(t)\,dt=\int_0^1 \bigl(\Delta-\min(t(\alpha),\Delta)\bigr)\,d\alpha$ with $t(\alpha)=\inf\lbrace t:p(t)\ge\alpha\rbrace$. FT is thus learning amortization for a single task in which cost is training steps only, the target is averaged over $[0,1]$ instead of fixed, costs are censored at the budget, and tasks are then averaged without weights. $A_n$ keeps the ratio form but fixes a declared target, charges every lifecycle component and aggregates by cost. For curves that rise and then collapse, AUC and $I$ disagree. The test suite includes a counterexample, so monotonicity (or a running maximum) must be stated whenever this correspondence is used. By contrast, GEM’s FWT (Lopez-Paz and Ranzato 2017) is a zero-shot accuracy difference. Positive FWT is neither necessary nor sufficient for $A_n>0$: a learner can be accurate zero-shot only through an expensive retrieval, or have zero zero-shot accuracy and still learn each new task cheaply.
 
 ## 5. First-order amortization versus learning to learn
 
@@ -278,7 +278,7 @@ $$
 A_n^{\mathrm{nov}} = 1-\frac{c_0(L)+\sum_{i\in\mathcal{N}}c_i(L)}{c_0(R)+\sum_{i\in\mathcal{N}}c_i(R)}.
 $$
 
-The full setup cost is kept in the numerator and denominator, which is conservative for the learner.
+Both arms’ full setup costs are kept. When $c_0(L)\ge c_0(R)$, the usual case for a learner that ships with or builds a library, this charges the whole extra setup to the novel tasks and is conservative for the learner.
 
 </div>
 
@@ -296,7 +296,7 @@ Because the probes are discarded, $\Pi(k)$ measures how cheap *new* learning has
 
 ### 5.2 Trend test
 
-Let $\ell_{s,i} = \log c_i^{(s)}(R)-\log c_i^{(s)}(L)$ be the per-task log ratio in seed $s$, and $\bar\ell_i$ its mean over seeds. The trend $\beta$ is the ordinary least-squares slope of $\bar\ell_i$ on $i$, with a bootstrap interval obtained by resampling seeds. A positive $\beta$ means the per-task savings grow along the sequence, which is the signature of compounding. $\beta\approx 0$ with $A_n>0$ means a fixed advantage, for example a useful initial library. $\beta$ is sensitive to how task difficulty is ordered in the curriculum, so it should be read alongside $\Pi(k)$ and the order-shuffled control.
+Let $\ell_{s,i} = \log c_i^{(s)}(R)-\log c_i^{(s)}(L)$ be the per-task log ratio in seed $s$, and $\bar\ell_i$ its mean over seeds. The trend $\beta$ is the ordinary least-squares slope of $\bar\ell_i$ on $i$, with a bootstrap interval obtained by resampling seeds. A positive $\beta$ means the per-task savings grow along the sequence, which is the signature of compounding. $\beta\approx 0$ with $A_n>0$ means a fixed advantage, for example a useful initial library. $\beta$ measures growth in *relative* savings. If later tasks are harder for the reference while $L$’s absolute cost stays flat, $\beta>0$ even though $L$’s learning has not accelerated in absolute terms. $\beta$ must therefore be read alongside absolute per-task costs, $\Pi(k)$ and the order-shuffled control.
 
 ## 6. Estimation and inference
 
@@ -328,7 +328,7 @@ $$
 
 ### 6.3 Censoring
 
-A censored task (Definition 3) is recorded at the cost actually spent: the budget, or the stopping cost of a committed hypothesis that missed the target. Reaching the target would have required at least that much, so the recorded cost is a *lower* bound on the true cost-to-target.
+A censored task (Definition 3) is recorded at the cost actually spent: the budget, or the stopping cost of a committed hypothesis that missed the target. Reaching the target in the same run would have required at least that much, so the recorded cost is a *lower* bound on the true cost-to-target.
 
 <div id="prop:cens" class="proposition">
 
@@ -387,7 +387,7 @@ Controls. The first six come from the PacketLM qualification plan; the last two 
 
 ## 9. Reference implementation and a synthetic worked example
 
-The package `amortization/` implements every quantity above. It includes cost logs with declared prices (Definition 2), $A_n$, $a_i$, $A^{(k)}_N$, $n^\star$, the decomposition (4), the estimator (5), the standard error (6), the paired bootstrap, the exact sign-flip test, the trend $\beta$, and the functions used to check Proposition 5. Each proposition has a test.
+The package `amortization/` implements every quantity above. It includes cost logs with declared prices (Definition 2), $A_n$, $a_i$, $A^{(k)}_N$, $n^\star$, the decomposition (4), the estimator (5), the standard error (6), the paired bootstrap, the exact sign-flip test, the trend $\beta$, $A_n^{\mathrm{nov}}$, $\Pi(k)$, and the functions used to check Proposition 5. Each proposition has a test.
 
 **The example is synthetic.**
 

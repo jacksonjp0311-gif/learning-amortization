@@ -15,6 +15,8 @@ from .metric import (
     cumulative_cost,
     component_contributions,
     marginal_amortization,
+    novelty_stratified_amortization,
+    probe_amortization,
     tail_amortization,
 )
 from .stats import (
@@ -39,6 +41,8 @@ __all__ = [
     "cumulative_cost",
     "component_contributions",
     "marginal_amortization",
+    "novelty_stratified_amortization",
+    "probe_amortization",
     "tail_amortization",
     "AmortizationEstimate",
     "bootstrap_ci",

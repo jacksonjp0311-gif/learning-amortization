@@ -117,6 +117,9 @@ def solve(target, train, test, blocks, n_lib):
     return None, cost, True
 
 
+CENSOR_REASONS = {"base": {}, "library": {}}  # filled by run_arm; reset per curriculum
+
+
 def run_arm(arm, targets, splits, seed):
     recs = []
     library = []
@@ -128,12 +131,21 @@ def run_arm(arm, targets, splits, seed):
         if not correct:
             censored = True
             failures += 1
+            if sol is not None:
+                reason = "wrong_commit"  # consistent with training pairs, wrong on sealed inputs
+            elif sum(cost.values()) >= BUDGET:
+                reason = "budget"
+            else:
+                reason = "depth_exhausted"
+            CENSOR_REASONS[arm][reason] = CENSOR_REASONS[arm].get(reason, 0) + 1
         for comp, amt in cost.items():
             recs.append(CostRecord(arm, seed, i, comp, "ops", amt, censored))
         recs.append(CostRecord(arm, seed, i, "execution", "ops", float(len(test)), censored))
         if arm == "library":
             maint = 0.0
-            if sol is not None and correct:
+            # Store every committed (training-consistent) solution. The sealed test
+            # inputs are experimenter-side only and must not decide what is stored.
+            if sol is not None:
                 dup = False
                 for e in library:
                     maint += M
@@ -150,6 +162,8 @@ def run_arm(arm, targets, splits, seed):
 def experiment(kind, seeds, n_tasks):
     log = []
     fails = {"base": 0, "library": 0}
+    for v in CENSOR_REASONS.values():
+        v.clear()
     for s in seeds:
         rng = np.random.default_rng([s, 0 if kind == "compositional" else 1])
         targets = make_curriculum(kind, n_tasks, rng)
@@ -203,6 +217,7 @@ def main(argv=None):
             "trend_slope_ci95": slope_ci,
             "component_contributions": contrib,
             "censored_or_failed_tasks": fails,
+            "censoring_reasons": {a: dict(sorted(v.items())) for a, v in CENSOR_REASONS.items()},
             "total_tasks_per_arm": len(seeds) * args.tasks,
         }
     (args.outdir / "summary.json").write_text(json.dumps(summary, indent=2, default=float))

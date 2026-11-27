@@ -30,37 +30,52 @@
       "base": 12,
       "library": 0
     },
+    "censoring_reasons": {
+      "base": {
+        "depth_exhausted": 11,
+        "wrong_commit": 1
+      },
+      "library": {}
+    },
     "total_tasks_per_arm": 240
   },
   "unrelated": {
     "S": 20,
     "N": 12,
-    "A_N": -2.261390519481459,
+    "A_N": -2.2801341951547873,
     "A_N_ci95": [
-      -2.5389903098052837,
-      -1.9749924246605142
+      -2.548809728501,
+      -1.9992194157054872
     ],
-    "A_N_delta_se": 0.1468335228855566,
+    "A_N_delta_se": 0.14357425166595175,
     "sign_flip_p": 9.99990000099999e-06,
-    "geometric_mean_form": -2.181972400972131,
-    "tail_A_last4": -4.305580794426832,
+    "geometric_mean_form": -2.199736725531956,
+    "tail_A_last4": -4.349079277628216,
     "break_even_n_mean_costs": null,
-    "trend_slope_log_ratio_per_task": -0.13741723426003938,
+    "trend_slope_log_ratio_per_task": -0.13816614723165693,
     "trend_slope_ci95": [
-      -0.15403064965193064,
-      -0.1189930789550158
+      -0.1548596158404175,
+      -0.11967221504536141
     ],
     "component_contributions": {
-      "acquisition": -1.9931816701289107,
+      "acquisition": -2.0096846341481056,
       "execution": 0.0,
-      "maintenance": -0.03653814138986804,
-      "retrieval": -0.09110106617833333,
-      "storage": -0.00043921046345823955,
-      "verification": -0.14013043132088848
+      "maintenance": -0.03685661964287006,
+      "retrieval": -0.09191535716612258,
+      "storage": -0.00044152666893461796,
+      "verification": -0.14123605752875354
     },
     "censored_or_failed_tasks": {
       "base": 1,
       "library": 1
+    },
+    "censoring_reasons": {
+      "base": {
+        "wrong_commit": 1
+      },
+      "library": {
+        "wrong_commit": 1
+      }
     },
     "total_tasks_per_arm": 240
   }

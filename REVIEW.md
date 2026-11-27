@@ -51,6 +51,45 @@ the synthetic example.
 1. **No PacketLM evaluation.** This is deliberate. Section 10 is a protocol, and results should be added only from verified artifacts.
 2. **The novelty search is not exhaustive.** It covered web searches and the literature cited. An unindexed or very recent use of "learning amortization" cannot be ruled out.
 3. **Moderate-confidence related-work details.** The Veniat et al. description (transfer reported alongside model growth) and the ICLR 2022 venue for Dehghani et al. were confirmed only by secondary pages, not the primary PDFs.
-4. **GitHub rendering of `whitepaper.md` was not checked visually** in a browser. The PDF is the canonical version.
+4. **GitHub rendering of `whitepaper.md` was not checked visually** in a browser. The PDF is the canonical version. *(Superseded: the independent review below checked it, found every numbered display equation broken, and fixed the generator; see I2.)*
 5. **Statistics.** Only percentile bootstrap intervals are implemented. BCa and studentized intervals, and the Wilcoxon alternative, are mentioned but not implemented. With few seeds the intervals are descriptive only.
 6. **The synthetic example is tiny** (6 primitives, Z₁₆, depth ≤ 5). It demonstrates the accounting, not any empirical claim.
+
+## Independent review
+
+**Who reviewed.** A separate AI reviewer that did not draft the package, working from a
+fresh clone of `main` at `eac64a4`. It is still not a human review. Everything below
+was re-run or re-derived, not taken from the notes above.
+
+**What was re-done.**
+
+| Area | What was done | Result |
+|---|---|---|
+| Definitions 1–9, Propositions 1–6, Corollary 1 | Every statement and proof re-derived by hand, including the Prop. 1(iii) counterexample, the Prop. 4 derivative sign and floor formula, and the discrete and continuous layer-cake identities of Prop. 5 | All propositions hold as stated. One remark attached to Def. 8 was false (I1) |
+| Prop. 5 against the source | Continual World Eq. (2) read in the arXiv PDF (2105.10919v3): FT_i = (AUC_i − AUC_i^b)/(1 − AUC_i^b), averaged over tasks without weights | Matches the paper |
+| Citations | 26 of 30 entries checked against primary records: 13 DOIs on Crossref (Minton, Tambe et al., DreamCoder, Stitch, Dietterich, Baxter, Hospedales et al., Caruana, Chaudhry et al. 2018, Fikes et al., Green AI, Laird et al., Mitchell et al.), 11 arXiv records (Continual World, GEM, Díaz-Rodríguez et al., A-GEM, Veniat et al., LILO, Hernandez & Brown, Dehghani et al., Chollet, Agarwal et al., MAML), and the PMLR and JMLR pages for Wenliang et al. and Taylor & Stone. The text claims for GEM's FWT, A-GEM's LCA, Hernandez & Brown's AlexNet-level target and Díaz-Rodríguez et al.'s efficiency criteria were checked in the PDFs | Metadata and attributed claims correct |
+| Tests | Fresh venv, `pip install -e ".[test,figures]"`, `pytest -q` | 36 passed before changes, 37 after (one new test) |
+| Synthetic example | `python examples/synthetic_toy.py` from a clean clone | Reproduced `summary.json` and Table 2 exactly and deterministically before the fix in I3; re-run after it |
+| PDF | Clean `latexmk -pdf` from scratch | No errors, no undefined references or citations |
+| GitHub rendering | README and `whitepaper.md` rendered with GitHub's Markdown API and viewed as live github.com pages in headless Chrome | README fine; `whitepaper.md` broken (I2) |
+
+**Findings and fixes.**
+
+| # | Severity | Finding | Fix |
+|---|---|---|---|
+| I1 | **Major (math)** | Def. 8 claimed that keeping both setup costs makes A^nov conservative whenever c₀(L) ≥ c₀(R). That is false. With equal setups and a learner that is worse on the novel tasks (c₀ = 10 for both, novel costs 100 vs 50), A^nov = −0.833 while the setup-free ratio is −1.0, so including the setup flatters the learner. The exact condition is c₀(L)·X_R ≥ c₀(R)·X_L. Fix R5 above had qualified the claim with the wrong condition | Restated with the exact if-and-only-if condition, noting it always holds when c₀(R) = 0 and that c₀(L) ≥ c₀(R) is not sufficient. New test `test_novelty_setup_conservativeness_condition` checks the counterexample, the c₀(R) = 0 case and the condition on 500 random cases |
+| I2 | **Major (rendering)** | In `whitepaper.md` on GitHub, every numbered display equation (Eqs. 1–6, including the boxed definition of A_n) rendered as a broken vertical stack, because `\tag` does not work inside `$$` there. GitHub also applies Markdown backslash escapes inside `$$…$$` and `$…$`, so `\,` and `\;` were eaten and showed up as literal `,` and `;` (visible in the corollary and in several integrals) | `scripts/build_markdown.py` now writes display math as ```` ```math ```` fences, which GitHub passes to MathJax verbatim, with the equation number appended as "(n)". It rewrites inline `\,` as `\thinspace`. The GitHub Markdown API output was checked to confirm the TeX now reaches MathJax unchanged |
+| I3 | **Major (protocol, code)** | The synthetic library learner decided what to store by checking the **sealed** test inputs (`if sol is not None and correct`). That breaks the paper's own rule that no learner reads E_i (Def. 1, Def. 3, pitfall 2) and contradicted the script's docstring ("committed solutions are stored"). It mattered in one unrelated-curriculum seed | The learner now stores every committed, training-consistent solution. Re-run: compositional results are unchanged. Unrelated results moved slightly: Â₁₂ −2.261 → −2.280 (CI [−2.549, −1.999]), SE 0.147 → 0.144, A⁽⁴⁾ −4.306 → −4.349, β −0.137 → −0.138 [−0.155, −0.120], D_acq −1.993 → −2.010, D_ver −0.140 → −0.141, D_ret −0.091 → −0.092. Paper Table 2, README, `summary.json`, cost CSVs and the figure were regenerated from the run |
+| I4 | Minor (accuracy) | Section 9 said the base arm "exceeds its budget on 12 of 240 tasks" and the README said "budget or depth limit". Instrumenting the run showed the budget is never hit: 11 are depth-5 exhaustion and 1 is a committed program that fails the sealed inputs | Paper and README now give the actual breakdown. `summary.json` gains a `censoring_reasons` field so the breakdown can be reproduced from the artifacts. The lower-bound conclusion still holds by Prop. 6 |
+| I5 | Minor (overclaim) | The abstract and README said Continual World's FT is "exactly" an amortization ratio, without the non-decreasing-curve condition that Prop. 5 needs (the test suite has a counterexample) | Condition added in both places |
+| I6 | Minor (consistency) | §6.2 said the sign-flip test enumerates all 2^S patterns. The code does that only for S ≤ 16 and uses Monte Carlo above that, as Table 2 (S = 20) does. The text also did not say that the test's null (symmetry of per-seed log ratios) is not the same as the ratio-of-means estimand | Both stated |
+| I7 | Minor (precision) | Def. 3 called τᵢ a "time", but it is indexed by cost spent | Worded as a stopping point measured in cost |
+| I8 | Minor (code docs) | `metric.py` described c_i as cost "until the learner first meets the target", which leaves out the post-task costs that Def. 2 attributes to task i. `CostRecord.censored` was described as budget exhaustion only | Docstrings aligned with Defs. 2–3 and §6.3 |
+| I9 | Cosmetic | `{\'\i}` in `refs.bib` rendered as "Dı́az-Rodrı́guez" (dotless i plus a combining accent) in the Markdown | Changed to `{\'i}` |
+
+**Left open.**
+
+1. The `whitepaper.md` fix was checked through GitHub's Markdown API and a local MathJax render, not on the live page before the push. The README already renders correctly on github.com.
+2. Not re-checked against primary records: Thrun & Pratt, Chen & Liu, Efron & Tibshirani and Gershman & Goodman (the escholarship page did not load from the review machine), plus the Minton utility formula, which was taken from the paper's description and agrees with standard secondary accounts.
+3. Items 1–3, 5 and 6 of the earlier "Left open" list still stand.
+

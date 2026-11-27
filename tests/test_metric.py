@@ -202,6 +202,29 @@ def test_novelty_stratified():
         novelty_stratified_amortization(cc, cb, [True] + [False] * 4)
 
 
+def test_novelty_setup_conservativeness_condition():
+    # Def. 8: keeping both setups is conservative (A_nov <= setup-free ratio) iff
+    # c0(L) * X_R >= c0(R) * X_L. c0(L) >= c0(R) alone is not enough.
+    novel = [False, True, True]
+
+    def free(cc, cb):
+        return 1 - (cc[1] + cc[2]) / (cb[1] + cb[2])
+
+    # equal setups, learner worse on novel tasks: A_nov is LARGER (not conservative)
+    cc, cb = [10, 50, 50], [10, 25, 25]  # X_L = 100, X_R = 50
+    assert novelty_stratified_amortization(cc, cb, novel) > free(cc, cb)
+    # reference with no setup: always conservative
+    for _ in range(200):
+        cc = list(rng.uniform(0, 10, size=3))
+        cb = [0.0] + list(rng.uniform(0.1, 10, size=2))
+        assert novelty_stratified_amortization(cc, cb, novel) <= free(cc, cb) + 1e-12
+    # general case: the cross-multiplied condition decides
+    for _ in range(500):
+        cc, cb = list(rng.uniform(0, 10, size=3)), list(rng.uniform(0.1, 10, size=3))
+        cond = cc[0] * (cb[1] + cb[2]) >= cb[0] * (cc[1] + cc[2])
+        assert (novelty_stratified_amortization(cc, cb, novel) <= free(cc, cb) + 1e-12) == cond
+
+
 def test_probe_curve():
     P = [[10, 20], [8, 16], [5, 10]]
     assert np.allclose(probe_amortization(P), [0.0, 0.2, 0.5])

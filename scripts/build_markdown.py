@@ -59,13 +59,21 @@ md = subprocess.run(
     input=tex, capture_output=True, text=True, cwd=PAPER, check=True,
 ).stdout
 
-# display math on its own lines for GitHub
+# Display math as ```math fences. Inside $$...$$ GitHub applies Markdown backslash
+# escapes first, so \, and \; are eaten and \tag breaks the layout. Fenced math is
+# passed to MathJax verbatim. Equation numbers are appended as a visible "(n)".
 def _display(m):
-    body = "\n".join(line.strip() for line in m.group(1).strip().splitlines())
-    return "\n\n$$\n" + body + "\n$$\n\n"
+    lines = [line.strip() for line in m.group(1).strip().splitlines()]
+    tags = [t for line in lines for t in re.findall(r"\\tag\{([^}]*)\}", line)]
+    body = "\n".join(l for l in (re.sub(r"\\tag\{[^}]*\}", "", line).strip() for line in lines) if l)
+    if tags:
+        body += f"\\qquad\\qquad({tags[0]})"
+    return "\n\n```math\n" + body + "\n```\n\n"
 
 
 md = re.sub(r"\s*\$\$(.+?)\$\$\s*", _display, md, flags=re.S)
+# inline math: \, is also an escape GitHub would eat
+md = re.sub(r"(?<![$`])\$([^$\n]+?)\$(?![`$])", lambda m: "$" + m.group(1).replace("\\,", "\\thinspace ") + "$", md)
 md = re.sub(r"\n{3,}", "\n\n", md)
 md = re.sub(r"<a href=\"#[^\"]*\" data-reference-type=\"[^\"]*\"\s*data-reference=\"[^\"]*\">([^<]*)</a>", r"\1", md)
 

@@ -4,7 +4,7 @@
 
 ## Abstract
 
-A learning system that accumulates knowledge is not necessarily a system that gets better at learning. We make the distinction measurable. *Learning amortization* compares the *total* cost a continual learner pays to reach a fixed accuracy target on every task of a sequence with the cost paid by a reference learner on the same sequence: $A_n = 1 - C_{\text{continual}}(n)/C_{\text{reference}}(n)$. Costs are charged over the whole lifecycle of what is learned: acquisition, verification, storage, retrieval, maintenance and execution, plus any one-time setup. We give formal definitions and prove the basic properties of the metric: its range and sign, unit invariance (and the precise sense in which it is *not* invariant), an exact weighted-average form, an additive decomposition into cost components, its asymptotic limit and a closed-form break-even point. We show that the AUC-based forward-transfer metric of Continual World is exactly an amortization ratio whose cost is training steps averaged over all accuracy thresholds, which places the proposal inside existing transfer metrics instead of beside them. We separate first-order amortization (past learning pays for future learning) from second-order evidence of learning to learn (the savings themselves grow with experience), specify paired-seed estimators, confidence intervals, exact tests and censoring bounds, and list the controls and pitfalls that decide whether a positive $A_n$ means anything. A small open-source reference implementation reproduces every quantity, and a clearly labelled synthetic example shows the metric detecting both genuine amortization and the classical “utility problem” in which a growing library makes learning *more* expensive. The motivating application is PacketLM, a non-transformer sparse-binary learner; this paper reports *no* PacketLM results and gives only a planned evaluation protocol.
+A learning system that accumulates knowledge is not necessarily a system that gets better at learning. We make the distinction measurable. *Learning amortization* compares the *total* cost a continual learner pays to reach a fixed accuracy target on every task of a sequence with the cost paid by a reference learner on the same sequence: $A_n = 1 - C_{\text{continual}}(n)/C_{\text{reference}}(n)$. Costs are charged over the whole lifecycle of what is learned: acquisition, verification, storage, retrieval, maintenance and execution, plus any one-time setup. We give formal definitions and prove the basic properties of the metric: its range and sign, unit invariance (and the precise sense in which it is *not* invariant), an exact weighted-average form, an additive decomposition into cost components, its asymptotic limit and a closed-form break-even point. We show that, for non-decreasing learning curves, the AUC-based forward-transfer metric of Continual World is exactly an amortization ratio whose cost is training steps averaged over all accuracy thresholds, which places the proposal inside existing transfer metrics instead of beside them. We separate first-order amortization (past learning pays for future learning) from second-order evidence of learning to learn (the savings themselves grow with experience), specify paired-seed estimators, confidence intervals, exact tests and censoring bounds, and list the controls and pitfalls that decide whether a positive $A_n$ means anything. A small open-source reference implementation reproduces every quantity, and a clearly labelled synthetic example shows the metric detecting both genuine amortization and the classical “utility problem” in which a growing library makes learning *more* expensive. The motivating application is PacketLM, a non-transformer sparse-binary learner; this paper reports *no* PacketLM results and gives only a planned evaluation protocol.
 
 ## 1. Introduction
 
@@ -34,7 +34,7 @@ The idea that experience with earlier tasks should improve learning of later one
 
 **Continual-learning metrics.**
 
-Lopez-Paz and Ranzato (2017) define backward transfer (BWT) and forward transfer (FWT) from an accuracy matrix $R_{j,i}$, the test accuracy on task $i$ after training on task $j$. FWT measures zero-shot accuracy on task $i$ just before it is trained, relative to a random-initialisation baseline. It is an accuracy quantity and carries no cost. Dı́az-Rodrı́guez et al. (2018) add efficiency criteria, including model-size efficiency, sample-storage efficiency and computational efficiency, and combine them with accuracy-based ones in a weighted score. That work is the closest prior art we found for charging resources in continual learning. As far as we can tell, it does not define cost at matched accuracy or a sequence-level savings ratio. Chaudhry et al. (2018) introduce intransigence (inability to learn new tasks), and Chaudhry et al. (2019) introduce the learning-curve area (LCA) as a measure of how quickly a learner acquires new tasks. Wołczyk et al. (2021) measure forward transfer as the normalised area between a continual learner’s training curve and a from-scratch reference; Proposition 5 shows that this is a special case of the ratio studied here. Veniat, Denoyer, and Ranzato (2021) probe several kinds of transfer and report them together with how fast the model grows in size. Chen and Liu (2018) survey lifelong learning more broadly.
+Lopez-Paz and Ranzato (2017) define backward transfer (BWT) and forward transfer (FWT) from an accuracy matrix $R_{j,i}$, the test accuracy on task $i$ after training on task $j$. FWT measures zero-shot accuracy on task $i$ just before it is trained, relative to a random-initialisation baseline. It is an accuracy quantity and carries no cost. Díaz-Rodríguez et al. (2018) add efficiency criteria, including model-size efficiency, sample-storage efficiency and computational efficiency, and combine them with accuracy-based ones in a weighted score. That work is the closest prior art we found for charging resources in continual learning. As far as we can tell, it does not define cost at matched accuracy or a sequence-level savings ratio. Chaudhry et al. (2018) introduce intransigence (inability to learn new tasks), and Chaudhry et al. (2019) introduce the learning-curve area (LCA) as a measure of how quickly a learner acquires new tasks. Wołczyk et al. (2021) measure forward transfer as the normalised area between a continual learner’s training curve and a from-scratch reference; Proposition 5 shows that this is a special case of the ratio studied here. Veniat, Denoyer, and Ranzato (2021) probe several kinds of transfer and report them together with how fast the model grows in size. Chen and Liu (2018) survey lifelong learning more broadly.
 
 **Transfer metrics in reinforcement learning.**
 
@@ -58,7 +58,7 @@ Schwartz et al. (2020) argue for reporting the computational price of results. H
 
 **Novelty assessment.**
 
-We searched for the phrase “learning amortization” and for metrics that combine cost-at-matched-accuracy, a sequence-level savings ratio and full lifecycle costs. We found no established metric under this name. The ingredients are not new: time-to-threshold (Taylor and Stone 2009), area-based forward transfer (Wołczyk et al. 2021), resource-aware continual-learning criteria (Dı́az-Rodrı́guez et al. 2018), compute to a fixed performance level (Hernandez and Brown 2020), and the utility analysis of speedup learning (Minton 1990). Our contribution is therefore a *synthesis and a protocol*. It has one definition that charges every lifecycle cost at matched accuracy, proofs of the properties needed to interpret it, an exact reduction showing how an established forward-transfer metric fits inside it, and a control and statistics protocol aimed at separating learning to learn from accumulation. We make no stronger novelty claim.
+We searched for the phrase “learning amortization” and for metrics that combine cost-at-matched-accuracy, a sequence-level savings ratio and full lifecycle costs. We found no established metric under this name. The ingredients are not new: time-to-threshold (Taylor and Stone 2009), area-based forward transfer (Wołczyk et al. 2021), resource-aware continual-learning criteria (Díaz-Rodríguez et al. 2018), compute to a fixed performance level (Hernandez and Brown 2020), and the utility analysis of speedup learning (Minton 1990). Our contribution is therefore a *synthesis and a protocol*. It has one definition that charges every lifecycle cost at matched accuracy, proofs of the properties needed to interpret it, an exact reduction showing how an established forward-transfer metric fits inside it, and a control and statistics protocol aimed at separating learning to learn from accumulation. We make no stronger novelty claim.
 
 ## 3. Formal setup
 
@@ -72,20 +72,19 @@ We searched for the phrase “learning amortization” and for metrics that comb
 
 **Definition 2** (Cost functional). Let $\mathcal{K}= \lbrace \mathrm{acq},\mathrm{ver},\mathrm{sto},\mathrm{ret},\mathrm{mnt},\mathrm{exe}\rbrace$ be the cost components and $\mathcal{R}$ a finite set of measured resources (e.g. primitive operations, CPU-seconds, byte-seconds of storage, oracle queries, teacher turns). For task index $i\in\lbrace 0,\dots,N\rbrace$, component $k$ and resource $r$, let $q_{i,k,r}\ge 0$ be the measured amount. Index $i=0$ collects one-time costs paid before $T_1$. Given a price vector $w\in\mathbb{R}_{\ge 0}^{\mathcal{R}}$ *declared before the experiment*,
 
-$$
-\tag{1}
-c_{i,k} = \sum_{r\in\mathcal{R}} w_r\, q_{i,k,r}, \qquad c_i = \sum_{k\in\mathcal{K}} c_{i,k}.
-$$
+```math
+c_{i,k} = \sum_{r\in\mathcal{R}} w_r\, q_{i,k,r}, \qquad c_i = \sum_{k\in\mathcal{K}} c_{i,k}.\qquad\qquad(1)
+```
 
 *Attribution rule.* Every cost incurred from the moment the learner is ready to accept $T_i$ until the moment it is ready to accept $T_{i+1}$ is charged to $i$; costs before $T_1$ are charged to $0$. Thus post-task consolidation, deduplication and checkpointing are charged to the task that triggered them. Experimenter-side evaluation on $E_i$ is not charged. The learner’s own execution to produce answers for $E_i$ is charged as $c_{i,\mathrm{exe}}$.
 
 </div>
 
-The components have the following meanings. *Acquisition* covers search, candidate generation, parameter updates and interaction with the teacher or oracle. *Verification* covers checking candidates against evidence, consistency checks and re-verification after corrections or retractions. *Storage* is the holding cost of the state, measured in a resource such as byte-seconds, $\int |M(t)|\,dt$ over the task’s interval, so a library that is never used still costs something. *Retrieval* covers indexing, lookup and matching of stored items, which is Minton’s match cost. *Maintenance* covers consolidation, compression, deduplication, dependency propagation, invalidation and checkpoint I/O. *Execution* is running the acquired capability.
+The components have the following meanings. *Acquisition* covers search, candidate generation, parameter updates and interaction with the teacher or oracle. *Verification* covers checking candidates against evidence, consistency checks and re-verification after corrections or retractions. *Storage* is the holding cost of the state, measured in a resource such as byte-seconds, $\int |M(t)|\thinspace dt$ over the task’s interval, so a library that is never used still costs something. *Retrieval* covers indexing, lookup and matching of stored items, which is Minton’s match cost. *Maintenance* covers consolidation, compression, deduplication, dependency propagation, invalidation and checkpoint I/O. *Execution* is running the acquired capability.
 
 <div id="def:ctt" class="definition">
 
-**Definition 3** (Cost-to-target). Fix, before the experiment, an accuracy target $\alpha_i\in(0,1]$ and a budget $B_i>0$ for every task. Let $\mathrm{acc}_i(L,t)$ be the accuracy on $E_i$ of the hypothesis $L$ has committed to after spending cost $t$ on $T_i$. The learning phase of $T_i$ ends at a time $\tau_i(L)$ defined in one of two ways, declared in advance:
+**Definition 3** (Cost-to-target). Fix, before the experiment, an accuracy target $\alpha_i\in(0,1]$ and a budget $B_i>0$ for every task. Let $\mathrm{acc}_i(L,t)$ be the accuracy on $E_i$ of the hypothesis $L$ has committed to after spending cost $t$ on $T_i$. The learning phase of $T_i$ ends at a stopping point $\tau_i(L)$, measured in cost spent on $T_i$ and defined in one of two ways, declared in advance:
 
 - *anytime learners*: $\tau_i(L) = \min\bigl(B_i,\ \inf\lbrace t\ge 0: \mathrm{acc}_i(L,t)\ge \alpha_i\rbrace \bigr)$, where the experimenter evaluates checkpoints on $E_i$ without feeding any result back to the learner;
 
@@ -111,10 +110,9 @@ $c_i(L)$ is the total cost charged to $i$ by Definition 2: the cost up to $\tau_
 
 **Definition 5** (Learning amortization). For a learner $L$, a reference $R$ and a horizon $1\le n\le N$ with $C_R(n)>0$,
 
-$$
-\tag{2}
-\boxed{\;A_n(L\,\Vert \,R) \;=\; 1-\frac{C_L(n)}{C_R(n)}\;}
-$$
+```math
+\boxed{\;A_n(L\,\Vert \,R) \;=\; 1-\frac{C_L(n)}{C_R(n)}\;}\qquad\qquad(2)
+```
 
 We write $A_n$ when $L$ and $R$ are clear from context. $A_n>0$ means $L$ paid less than $R$ in total to reach the same targets on the first $n$ tasks.
 
@@ -124,9 +122,9 @@ We write $A_n$ when $L$ and $R$ are clear from context. $A_n>0$ means $L$ paid l
 
 **Definition 6** (Marginal and asymptotic amortization). For $i\ge 1$ with $c_i(R)>0$, the marginal amortization is $a_i = 1 - c_i(L)/c_i(R)$, and we set $a_0 = 1-c_0(L)/c_0(R)$ when $c_0(R)>0$. The asymptotic amortization is $A_\infty = \lim_{n\to\infty} A_n$ when the limit exists. The tail-window estimator with window $k$ is
 
-$$
+```math
 A^{(k)}_N = 1-\frac{\sum_{i=N-k+1}^{N} c_i(L)}{\sum_{i=N-k+1}^{N} c_i(R)}.
-$$
+```
 
 </div>
 
@@ -154,10 +152,9 @@ All proofs are short and given inline. Each property has an executable check in 
 
 (v) *Weighted average.* Let $P=\lbrace i\le n: c_i(R)>0\rbrace$ and $Z=\lbrace i\le n: c_i(R)=0\rbrace$. Then
 
-$$
-\tag{3}
-A_n = \sum_{i\in P}\omega_i\, a_i \;-\; \sum_{i\in Z}\frac{c_i(L)}{C_R(n)},\qquad \omega_i = \frac{c_i(R)}{C_R(n)},\quad \sum_{i\in P}\omega_i = 1 .
-$$
+```math
+A_n = \sum_{i\in P}\omega_i\, a_i \;-\; \sum_{i\in Z}\frac{c_i(L)}{C_R(n)},\qquad \omega_i = \frac{c_i(R)}{C_R(n)},\quad \sum_{i\in P}\omega_i = 1 .\qquad\qquad(3)
+```
 
 In the common case $c_0(R)=0$ (a reference with no setup), the learner’s whole setup cost enters through the second sum as a pure penalty. If $Z=\varnothing$, then $A_n$ is exactly the $\omega$-weighted mean of the marginal amortizations.
 
@@ -175,10 +172,9 @@ Item (v) shows that cumulative amortization weights each task by its *reference*
 
 **Proposition 2** (Component decomposition). Write $C_{L,k}(n)=\sum_{i\le n}c_{i,k}(L)$ and similarly for $R$. Then
 
-$$
-\tag{4}
-A_n = \sum_{k\in\mathcal{K}} D_{n,k},\qquad D_{n,k} = \frac{C_{R,k}(n)-C_{L,k}(n)}{C_R(n)} .
-$$
+```math
+A_n = \sum_{k\in\mathcal{K}} D_{n,k},\qquad D_{n,k} = \frac{C_{R,k}(n)-C_{L,k}(n)}{C_R(n)} .\qquad\qquad(4)
+```
 
 </div>
 
@@ -192,9 +188,9 @@ $$
 
 **Corollary 1** (Utility condition). Partition $\mathcal{K}$ into components on which $L$ saves ($D_{n,k}\ge 0$) and overheads ($D_{n,k}<0$). Then $A_n>0$ if and only if the total savings exceed the total overheads:
 
-$$
+```math
 \sum_{k: D_{n,k}\ge 0}\bigl(C_{R,k}-C_{L,k}\bigr) \;>\; \sum_{k: D_{n,k}<0}\bigl(C_{L,k}-C_{R,k}\bigr).
-$$
+```
 
 A memoryless reference typically has $C_{R,\mathrm{ret}}=C_{R,\mathrm{mnt}}=0$, so for a library learner retrieval and maintenance enter only as overheads. This is Minton’s utility problem (Minton 1990) at the scale of a whole sequence.
 
@@ -204,9 +200,9 @@ A memoryless reference typically has $C_{R,\mathrm{ret}}=C_{R,\mathrm{mnt}}=0$, 
 
 **Proposition 3** (Asymptotic limit). Suppose $c_0(L),c_0(R)<\infty$ and the per-task averages converge: $\frac1n\sum_{i=1}^n c_i(L)\to\gamma_L$ and $\frac1n\sum_{i=1}^n c_i(R)\to\gamma_R>0$. Then
 
-$$
+```math
 A_\infty = \lim_{n\to\infty}A_n = 1-\frac{\gamma_L}{\gamma_R}.
-$$
+```
 
 </div>
 
@@ -222,9 +218,9 @@ One-time costs vanish from $A_\infty$. A system with an enormous pre-built libra
 
 **Proposition 4** (Break-even under constant costs). Let $c_0(L)=c_0(R)+\Delta_0$ with $c_0(R)\ge 0$ and $c_0(L)\ge 0$, and for $i\ge1$ let $c_i(R)=\gamma>0$ and $c_i(L)=\gamma-\delta$ with $0<\delta\le\gamma$. Then
 
-$$
+```math
 A_n = \frac{n\delta-\Delta_0}{c_0(R)+n\gamma},
-$$
+```
 
 which is non-decreasing in $n$ when $\Delta_0\ge 0$ and tends to $\delta/\gamma$. Consequently $n^\star = \lfloor \Delta_0/\delta\rfloor+1$ if $\Delta_0\ge 0$ and $n^\star=1$ if $\Delta_0<0$ (for $N\ge n^\star$).
 
@@ -240,9 +236,9 @@ which is non-decreasing in $n$ when $\Delta_0\ge 0$ and tends to $\delta/\gamma$
 
 Let a learning curve on a task be $p_0,\dots,p_{D-1}\in[0,1]$, the performance after $k$ units of training cost, with budget $D$. Define the first-hit cost $t(\alpha)=\min\lbrace k: p_k\ge\alpha\rbrace$ (or $D$ if the target is never reached), the normalised area $\mathrm{AUC}=\frac1D\sum_k p_k$, and
 
-$$
+```math
 I(p) = \int_0^1 \min\bigl(t(\alpha),D\bigr)\,d\alpha ,
-$$
+```
 
 the cost-to-target averaged uniformly over all targets $\alpha$ and censored at the budget.
 
@@ -250,19 +246,19 @@ the cost-to-target averaged uniformly over all targets $\alpha$ and censored at 
 
 **Proposition 5** (Forward transfer is an amortization ratio). If $p$ is non-decreasing, then (i) $\mathrm{AUC} = 1 - I(p)/D$. Hence (ii), for non-decreasing $p$ (continual) and $p^b$ (reference) with $\mathrm{AUC}^b<1$, the Continual World forward transfer (Wołczyk et al. 2021) satisfies
 
-$$
+```math
 \mathrm{FT} = \frac{\mathrm{AUC}-\mathrm{AUC}^b}{1-\mathrm{AUC}^b} = 1-\frac{I(p)}{I(p^b)} .
-$$
+```
 
 </div>
 
 <div class="proof">
 
-*Proof.* (i) $p_k = \int_0^1 \mathbf{1}[p_k\ge\alpha]\,d\alpha$, so $\sum_k p_k = \int_0^1 \bigl|\lbrace k: p_k\ge\alpha\rbrace \bigr|\,d\alpha$. For a non-decreasing curve, $\lbrace k:p_k\ge\alpha\rbrace =\lbrace t(\alpha),\dots,D-1\rbrace$, which has $D-\min(t(\alpha),D)$ elements. Dividing by $D$ gives the claim. (ii) By (i), $\mathrm{AUC}-\mathrm{AUC}^b = (I(p^b)-I(p))/D$ and $1-\mathrm{AUC}^b = I(p^b)/D>0$. ◻
+*Proof.* (i) $p_k = \int_0^1 \mathbf{1}[p_k\ge\alpha]\thinspace d\alpha$, so $\sum_k p_k = \int_0^1 \bigl|\lbrace k: p_k\ge\alpha\rbrace \bigr|\thinspace d\alpha$. For a non-decreasing curve, $\lbrace k:p_k\ge\alpha\rbrace =\lbrace t(\alpha),\dots,D-1\rbrace$, which has $D-\min(t(\alpha),D)$ elements. Dividing by $D$ gives the claim. (ii) By (i), $\mathrm{AUC}-\mathrm{AUC}^b = (I(p^b)-I(p))/D$ and $1-\mathrm{AUC}^b = I(p^b)/D>0$. ◻
 
 </div>
 
-The same proof works in continuous time, which is the form used by Wołczyk et al. (2021). For a non-decreasing $p:[0,\Delta]\to[0,1]$, Tonelli’s theorem gives $\int_0^\Delta p(t)\,dt=\int_0^1 \bigl(\Delta-\min(t(\alpha),\Delta)\bigr)\,d\alpha$ with $t(\alpha)=\inf\lbrace t:p(t)\ge\alpha\rbrace$. FT is thus learning amortization for a single task in which cost is training steps only, the target is averaged over $[0,1]$ instead of fixed, costs are censored at the budget, and tasks are then averaged without weights. $A_n$ keeps the ratio form but fixes a declared target, charges every lifecycle component and aggregates by cost. For curves that rise and then collapse, AUC and $I$ disagree. The test suite includes a counterexample, so monotonicity (or a running maximum) must be stated whenever this correspondence is used. By contrast, GEM’s FWT (Lopez-Paz and Ranzato 2017) is a zero-shot accuracy difference. Positive FWT is neither necessary nor sufficient for $A_n>0$: a learner can be accurate zero-shot only through an expensive retrieval, or have zero zero-shot accuracy and still learn each new task cheaply.
+The same proof works in continuous time, which is the form used by Wołczyk et al. (2021). For a non-decreasing $p:[0,\Delta]\to[0,1]$, Tonelli’s theorem gives $\int_0^\Delta p(t)\thinspace dt=\int_0^1 \bigl(\Delta-\min(t(\alpha),\Delta)\bigr)\thinspace d\alpha$ with $t(\alpha)=\inf\lbrace t:p(t)\ge\alpha\rbrace$. FT is thus learning amortization for a single task in which cost is training steps only, the target is averaged over $[0,1]$ instead of fixed, costs are censored at the budget, and tasks are then averaged without weights. $A_n$ keeps the ratio form but fixes a declared target, charges every lifecycle component and aggregates by cost. For curves that rise and then collapse, AUC and $I$ disagree. The test suite includes a counterexample, so monotonicity (or a running maximum) must be stated whenever this correspondence is used. By contrast, GEM’s FWT (Lopez-Paz and Ranzato 2017) is a zero-shot accuracy difference. Positive FWT is neither necessary nor sufficient for $A_n>0$: a learner can be accurate zero-shot only through an expensive retrieval, or have zero zero-shot accuracy and still learn each new task cheaply.
 
 ## 5. First-order amortization versus learning to learn
 
@@ -274,11 +270,11 @@ $A_n>0$ is a *first-order* claim: what was learned earlier pays for part of what
 
 **Definition 8** (Novelty-stratified amortization). Before running, the generator labels each task *novel* or *familiar* by a criterion that does not depend on outcomes. A task is novel, for instance, if its solution is not equivalent to any solution of an earlier task and it uses relations or entities withheld from earlier tasks. With $\mathcal{N}$ the novel tasks among the first $n$,
 
-$$
+```math
 A_n^{\mathrm{nov}} = 1-\frac{c_0(L)+\sum_{i\in\mathcal{N}}c_i(L)}{c_0(R)+\sum_{i\in\mathcal{N}}c_i(R)}.
-$$
+```
 
-Both arms’ full setup costs are kept. When $c_0(L)\ge c_0(R)$, the usual case for a learner that ships with or builds a library, this charges the whole extra setup to the novel tasks and is conservative for the learner.
+Both arms’ full setup costs are kept. Write $X_L=\sum_{i\in\mathcal{N}}c_i(L)$ and $X_R=\sum_{i\in\mathcal{N}}c_i(R)>0$. Compared with the setup-free ratio $1-X_L/X_R$, $A_n^{\mathrm{nov}}$ is never larger, that is, conservative for the learner, if and only if $c_0(L)\thinspace X_R\ge c_0(R)\thinspace X_L$ (cross-multiply the two ratios). This holds whenever $c_0(R)=0$, as for the default empty-memory reference. The weaker condition $c_0(L)\ge c_0(R)$ is *not* sufficient: equal setups shrink a negative $A^{\mathrm{nov}}_n$ towards $0$ when $X_L>X_R$.
 
 </div>
 
@@ -286,9 +282,9 @@ Both arms’ full setup costs are kept. When $c_0(L)\ge c_0(R)$, the usual case 
 
 **Definition 9** (Fork-and-discard probe curve). Fix sealed probe tasks $P_1,\dots,P_m$ that never enter any learner’s state. After task $k$ of the sequence, copy the state $M_k$, solve each probe from the copy, record the cost-to-target $c_{P_j}(M_k)$, then discard the copy. The probe amortization is
 
-$$
+```math
 \Pi(k) = 1-\frac{\sum_j c_{P_j}(M_k)}{\sum_j c_{P_j}(M_0)} .
-$$
+```
 
 </div>
 
@@ -308,23 +304,21 @@ Run $S$ independent seeds. Within a seed, every arm sees the same task sequence,
 
 The population quantity is $A_n = 1-\mathbb{E}X/\mathbb{E}Y$, the savings on the total spent by a population of runs. Its plug-in estimator is the ratio of means,
 
-$$
-\tag{5}
-\hat A_n = 1-\frac{\sum_s X_s}{\sum_s Y_s},
-$$
+```math
+\hat A_n = 1-\frac{\sum_s X_s}{\sum_s Y_s},\qquad\qquad(5)
+```
 
 which is consistent by the strong law of large numbers and continuity of $(x,y)\mapsto 1-x/y$ at $(\mathbb{E}X,\mathbb{E}Y)$ with $\mathbb{E}Y>0$. The mean of per-seed $A$ values estimates a different quantity, $1-\mathbb{E}[X/Y]$, and is distorted by the asymmetry noted in Proposition 1(iv). We do not use it. As a robustness check we also report the geometric form $1-\exp(-\bar\ell)$ with $\bar\ell = \frac1S\sum_s \ell_s$ and $\ell_s=\log Y_s-\log X_s$.
 
 *Delta-method standard error.* With $\hat\rho = \bar X/\bar Y$ and residuals $d_s = X_s-\hat\rho Y_s$ (which sum to zero),
 
-$$
-\tag{6}
-\widehat{\mathrm{SE}}(\hat A_n) = \frac{1}{\bar Y}\sqrt{\frac{1}{S(S-1)}\sum_{s=1}^S d_s^2 } .
-$$
+```math
+\widehat{\mathrm{SE}}(\hat A_n) = \frac{1}{\bar Y}\sqrt{\frac{1}{S(S-1)}\sum_{s=1}^S d_s^2 } .\qquad\qquad(6)
+```
 
 *Paired bootstrap.* Resample whole seeds with replacement, using the same indices for both arms, recompute (5), and report percentile intervals (Efron and Tibshirani 1993). For small $S$, treat intervals as descriptive and report every per-seed value, following Agarwal et al. (2021).
 
-*Exact test.* Under $H_0$, the distribution of $\ell_s$ is symmetric about $0$ (no amortization). The sign-flip permutation test uses $|\bar\ell|$ and enumerates all $2^S$ sign patterns. The smallest attainable two-sided $p$-value is $2/2^S$, so $S\ge 6$ seeds are needed before $p<0.05$ is even possible. The Wilcoxon signed-rank test on $\ell_s$ is an alternative. Across several controls, correct for multiplicity (e.g. Holm). On paired designs and the dangers of naive $t$-tests over resampled splits, see Dietterich (1998).
+*Exact test.* Under $H_0$, the distribution of $\ell_s$ is symmetric about $0$ (no amortization). The sign-flip permutation test uses $|\bar\ell|$ and enumerates all $2^S$ sign patterns (for large $S$ the reference implementation draws random patterns and reports $(1+m)/(1+B)$, where $m$ of the $B$ draws are at least as extreme as the observed statistic). The smallest attainable two-sided $p$-value is $2/2^S$, so $S\ge 6$ seeds are needed before $p<0.05$ is even possible. This null concerns the per-seed log ratios, the geometric form of $A_n$; it complements, and is not identical to, the ratio-of-means estimand (5). The Wilcoxon signed-rank test on $\ell_s$ is an alternative. Across several controls, correct for multiplicity (e.g. Holm). On paired designs and the dangers of naive $t$-tests over resampled splits, see Dietterich (1998).
 
 ### 6.3 Censoring
 
@@ -391,22 +385,22 @@ The package `amortization/` implements every quantity above. It includes cost lo
 
 **The example is synthetic.**
 
-The following numbers come from a toy program-search world written for this paper. They say nothing about PacketLM or any other real system. Inputs are $\mathbb{Z}_{16}$ and there are six fixed primitive maps. Each task is a hidden map given by 10 training pairs, with 6 sealed test inputs. A learner enumerates compositions breadth-first up to depth 5, commits to the first one consistent with the training pairs, and succeeds if it is exactly correct on the sealed inputs ($\alpha=1$). The *base* arm is empty-memory. The *library* arm stores each correct solution and offers it as an extra building block on later tasks, a much simplified version of DreamCoder’s library. Costs are counted operations, not simulated. Acquisition is one operation per computed output, verification is one per training comparison, retrieval is one per library fetch, storage is $0.01$ per stored cell per task, maintenance is one per cell compared during deduplication, and execution is one per sealed input. In the *compositional* curriculum, each target composes two earlier targets or primitives, so reuse is possible. In the *unrelated* curriculum, targets are independent depth-3 compositions of primitives. We used $S=20$ seeds, $N=12$ tasks and $10^4$ bootstrap resamples. The run takes about three seconds and is reproduced by `python examples/synthetic_toy.py`.
+The following numbers come from a toy program-search world written for this paper. They say nothing about PacketLM or any other real system. Inputs are $\mathbb{Z}_{16}$ and there are six fixed primitive maps. Each task is a hidden map given by 10 training pairs, with 6 sealed test inputs. A learner enumerates compositions breadth-first up to depth 5, commits to the first one consistent with the training pairs, and succeeds if it is exactly correct on the sealed inputs ($\alpha=1$). The *base* arm is empty-memory. The *library* arm stores each committed solution (one consistent with its training pairs; the sealed inputs are never consulted) and offers it as an extra building block on later tasks, a much simplified version of DreamCoder’s library. Costs are counted operations, not simulated. Acquisition is one operation per computed output, verification is one per training comparison, retrieval is one per library fetch, storage is $0.01$ per stored cell per task, maintenance is one per cell compared during deduplication, and execution is one per sealed input. In the *compositional* curriculum, each target composes two earlier targets or primitives, so reuse is possible. In the *unrelated* curriculum, targets are independent depth-3 compositions of primitives. We used $S=20$ seeds, $N=12$ tasks and $10^4$ bootstrap resamples. The run takes about three seconds and is reproduced by `python examples/synthetic_toy.py`.
 
 <div id="tab:toy">
 
 |                                                              |                   Compositional |                       Unrelated |
 |:-------------------------------------------------------------|--------------------------------:|--------------------------------:|
-| $\hat A_{12}$ (ratio of means)                               |                         $0.917$ |                        $-2.261$ |
-| 95% paired bootstrap CI                                      |               $[0.869,\ 0.941]$ |             $[-2.539,\ -1.975]$ |
-| Delta-method SE                                              |                         $0.017$ |                         $0.147$ |
+| $\hat A_{12}$ (ratio of means)                               |                         $0.917$ |                        $-2.280$ |
+| 95% paired bootstrap CI                                      |               $[0.869,\ 0.941]$ |             $[-2.549,\ -1.999]$ |
+| Delta-method SE                                              |                         $0.017$ |                         $0.144$ |
 | Sign-flip $p$ ($10^5$ Monte Carlo draws)                     |                      $<10^{-4}$ |                      $<10^{-4}$ |
-| Tail window $A^{(4)}_{12}$ (seed-mean costs)                 |                         $0.933$ |                        $-4.306$ |
+| Tail window $A^{(4)}_{12}$ (seed-mean costs)                 |                         $0.933$ |                        $-4.349$ |
 | Break-even $n^\star$ (seed-mean costs)                       |                             $2$ |                            none |
-| Trend $\beta$ \[95% CI\]                                     |         $0.147\ [0.103, 0.193]$ |       $-0.137\ [-0.154,-0.119]$ |
+| Trend $\beta$ \[95% CI\]                                     |         $0.147\ [0.103, 0.193]$ |       $-0.138\ [-0.155,-0.120]$ |
 | Censored tasks, base / library (of 240)                      |                      $12$ / $0$ |                       $1$ / $1$ |
-| $D_{\mathrm{acq}}$ / $D_{\mathrm{ver}}$                      |               $0.847$ / $0.078$ |             $-1.993$ / $-0.140$ |
-| $D_{\mathrm{ret}}$ / $D_{\mathrm{mnt}}$ / $D_{\mathrm{sto}}$ | $-0.002$ / $-0.005$ / $-0.0001$ | $-0.091$ / $-0.037$ / $-0.0004$ |
+| $D_{\mathrm{acq}}$ / $D_{\mathrm{ver}}$                      |               $0.847$ / $0.078$ |             $-2.010$ / $-0.141$ |
+| $D_{\mathrm{ret}}$ / $D_{\mathrm{mnt}}$ / $D_{\mathrm{sto}}$ | $-0.002$ / $-0.005$ / $-0.0001$ | $-0.092$ / $-0.037$ / $-0.0004$ |
 
 SYNTHETIC toy example (not PacketLM). The component contributions $D_k$ (Proposition 2) are computed on seed-mean costs and sum exactly to $\hat A_{12}$ (a ratio of means equals a ratio of seed-mean costs). Execution contributes $0$ in both curricula.
 
@@ -419,7 +413,7 @@ SYNTHETIC toy example (not PacketLM). The component contributions $D_k$ (Proposi
 
 **Reading the example.**
 
-In the compositional curriculum, $A_{12}$ is large and the trend is positive. The decomposition shows that the savings are almost entirely in acquisition, with small overheads from retrieval, maintenance and storage. The base arm exceeds its budget on 12 of 240 tasks, so by Proposition 6 the reported $\hat A_{12}$ is a lower bound. In the unrelated curriculum the library cannot help, because every stored entry enlarges the branching factor. $A_{12}$ is about $-2.3$, the trend is negative, and break-even never occurs. This is a minimal instance of the utility problem (Corollary 1). The example also illustrates Section 5. A positive $\beta$ here comes from tasks that are built to reuse earlier solutions, which is first-order reuse. On its own it would not establish learning to learn without novel probes.
+In the compositional curriculum, $A_{12}$ is large and the trend is positive. The decomposition shows that the savings are almost entirely in acquisition, with small overheads from retrieval, maintenance and storage. The base arm is censored on 12 of 240 tasks (11 times the depth-5 search space is exhausted without a consistent program, once it commits to a program that fails the sealed inputs; the operation budget is never hit), while the library arm is never censored. By Proposition 6 the reported $\hat A_{12}$ is therefore a lower bound. In the unrelated curriculum the library cannot help, because every stored entry enlarges the branching factor. $A_{12}$ is about $-2.3$, the trend is negative, and break-even never occurs. This is a minimal instance of the utility problem (Corollary 1). The example also illustrates Section 5. A positive $\beta$ here comes from tasks that are built to reuse earlier solutions, which is first-order reuse. On its own it would not establish learning to learn without novel probes.
 
 ## 10. Planned evaluation on PacketLM
 
@@ -524,15 +518,15 @@ Dehghani, Mostafa, Anurag Arnab, Lucas Beyer, Ashish Vaswani, and Yi Tay. 2022. 
 
 </div>
 
-<div id="ref-dietterich1998approximate" class="csl-entry">
+<div id="ref-diazrodriguez2018dont" class="csl-entry">
 
-Dietterich, Thomas G. 1998. “Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms.” *Neural Computation* 10 (7): 1895–1923. <https://doi.org/10.1162/089976698300017197>.
+Díaz-Rodríguez, Natalia, Vincenzo Lomonaco, David Filliat, and Davide Maltoni. 2018. “Don’t Forget, There Is More Than Forgetting: New Metrics for Continual Learning.” In *NeurIPS 2018 Workshop on Continual Learning*. <https://arxiv.org/abs/1810.13166>.
 
 </div>
 
-<div id="ref-diazrodriguez2018dont" class="csl-entry">
+<div id="ref-dietterich1998approximate" class="csl-entry">
 
-Dı́az-Rodrı́guez, Natalia, Vincenzo Lomonaco, David Filliat, and Davide Maltoni. 2018. “Don’t Forget, There Is More Than Forgetting: New Metrics for Continual Learning.” In *NeurIPS 2018 Workshop on Continual Learning*. <https://arxiv.org/abs/1810.13166>.
+Dietterich, Thomas G. 1998. “Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms.” *Neural Computation* 10 (7): 1895–1923. <https://doi.org/10.1162/089976698300017197>.
 
 </div>
 

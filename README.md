@@ -9,7 +9,7 @@
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![paper: CC BY 4.0](https://img.shields.io/badge/paper-CC%20BY%204.0-lightgrey.svg)
 ![python: 3.9+](https://img.shields.io/badge/python-3.9%2B-informational.svg)
-![tests: 36 passing locally](https://img.shields.io/badge/tests-36%20passing%20locally-brightgreen.svg)
+![tests: 37 passing locally](https://img.shields.io/badge/tests-37%20passing%20locally-brightgreen.svg)
 
 </div>
 
@@ -45,7 +45,7 @@ All results are proved in the paper and each has an executable test in [`tests/`
 | Decomposition (Prop. 2) | $A_n = \sum_k D_{n,k}$, which shows exactly which component saves and which is overhead |
 | Asymptotics (Prop. 3) | $A_n \to 1-\gamma_L/\gamma_R$; one-time costs vanish, so $A_\infty$ must be reported together with $A_N$ and break-even |
 | Break-even (Prop. 4) | Under constant costs, $n^\star = \lfloor \Delta_0/\delta \rfloor + 1$ |
-| **Link to forward transfer (Prop. 5)** | Continual World's AUC forward transfer equals $1 - I(p)/I(p^b)$: an amortization ratio over training steps, averaged over all accuracy thresholds |
+| **Link to forward transfer (Prop. 5)** | For non-decreasing learning curves, Continual World's AUC forward transfer equals $1 - I(p)/I(p^b)$: an amortization ratio over training steps, averaged over all accuracy thresholds |
 | Censoring (Prop. 6) | Censoring in the learner makes $\hat A$ optimistic; censoring in the reference makes it pessimistic |
 
 **Is this new?** Partly. We found no established metric called "learning amortization". Its ingredients are well established: time-to-threshold (Taylor & Stone, 2009), area-based forward transfer (Wołczyk et al., 2021), resource-aware continual-learning metrics (Díaz-Rodríguez et al., 2018), compute to a fixed performance level (Hernandez & Brown, 2020) and the utility problem (Minton, 1990). The contribution is a **synthesis and a measurement protocol**: one full-lifecycle, accuracy-matched definition, with proofs, controls and statistics. See [`docs/LITERATURE.md`](docs/LITERATURE.md), where every citation is checked against Crossref, arXiv or the publisher.
@@ -56,7 +56,7 @@ All results are proved in the paper and each has an executable test in [`tests/`
 git clone https://github.com/jacksonjp0311-gif/learning-amortization
 cd learning-amortization
 pip install -e ".[test,figures]"      # numpy is the only runtime dependency
-pytest -q                             # 36 tests: every proposition is checked
+pytest -q                             # 37 tests: every proposition is checked
 python examples/synthetic_toy.py      # synthetic worked example (~3 s)
 ```
 
@@ -104,14 +104,14 @@ The same library mechanism is tested on two curricula, with 20 seeds and 12 task
 
 | | compositional curriculum | unrelated curriculum |
 |---|---:|---:|
-| $\hat A_{12}$ [95% paired bootstrap CI] | **0.917** [0.869, 0.941] | **−2.261** [−2.539, −1.975] |
-| trend of per-task log savings | +0.147 / task | −0.137 / task |
+| $\hat A_{12}$ [95% paired bootstrap CI] | **0.917** [0.869, 0.941] | **−2.280** [−2.549, −1.999] |
+| trend of per-task log savings | +0.147 / task | −0.138 / task |
 | break-even $n^\star$ | 2 | never |
-| main driver ($D_k$) | acquisition +0.847 | acquisition −1.993 |
+| main driver ($D_k$) | acquisition +0.847 | acquisition −2.010 |
 
 <p align="center"><img src="paper/figures/synthetic_curve.png" width="520" alt="Synthetic A_n curves"></p>
 
-When tasks compose, the library pays for itself almost at once. When they do not, every stored entry enlarges the search, and the metric reports a large *negative* amortization. This is the utility problem, caught by the same metric. Section 9 of the paper gives the full accounting, including censoring: the base arm was censored (budget or depth limit reached) on 12 of 240 tasks, which makes $0.917$ a lower bound.
+When tasks compose, the library pays for itself almost at once. When they do not, every stored entry enlarges the search, and the metric reports a large *negative* amortization. This is the utility problem, caught by the same metric. Section 9 of the paper gives the full accounting, including censoring: the base arm was censored on 12 of 240 tasks (11 times its depth-5 search found no consistent program, once it committed to a program that failed the sealed inputs) and the library arm on none, which makes $0.917$ a lower bound.
 
 ## Controls the protocol requires
 

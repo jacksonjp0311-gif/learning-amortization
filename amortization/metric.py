@@ -7,8 +7,9 @@ A *per-task cost vector* ``c`` is a 1-D array of length ``N + 1``:
 * ``c[0]`` is the one-time cost paid before the first task (setup, seeding a
   library, building indices, ...). It is never optional: a learner that ships
   with a pre-built library must charge its construction here.
-* ``c[i]`` for ``i = 1..N`` is the full cost charged to task ``T_i`` until the
-  learner first meets the accuracy target on that task (Definition 3).
+* ``c[i]`` for ``i = 1..N`` is the full cost charged to task ``T_i``: the cost up
+  to the stopping point of Definition 3 plus the post-task costs (consolidation,
+  maintenance, execution on the sealed set) that Definition 2 attributes to it.
 
 All costs are non-negative scalars in one declared unit (Definition 2). Use
 :meth:`CostLog.task_costs` to obtain such vectors from raw multi-resource logs.
@@ -205,8 +206,9 @@ class CostRecord:
     """One measured cost increment.
 
     ``task`` = 0 marks a one-time cost paid before the first task. ``censored``
-    marks a task on which the learner exhausted its budget without reaching the
-    accuracy target (the recorded amount is then a lower bound, Section 6.3).
+    marks a task on which the learner stopped (budget exhausted, search space
+    exhausted, or a committed hypothesis that misses the target) without reaching
+    the accuracy target; the recorded amount is then a lower bound (Section 6.3).
     """
 
     arm: str

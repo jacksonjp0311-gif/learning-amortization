@@ -17,7 +17,7 @@ for key, num in re.findall(r"\\newlabel\{([^}@]+)\}\{\{([^}]*)\}", aux):
 
 NAMES = {"sec": ("Section", "Sections"), "prop": ("Proposition", "Propositions"), "def": ("Definition", "Definitions"),
          "tab": ("Table", "Tables"), "fig": ("Figure", "Figures"), "cor": ("Corollary", "Corollaries"),
-         "eq": ("Eq.", "Eqs.")}
+         "eq": ("Eq.", "Eqs."), "rem": ("Remark", "Remarks")}
 
 
 def num(k):
@@ -48,8 +48,16 @@ tex = tex.replace("\\newtheorem{definition}", "\\theoremstyle{definition}\n\\new
 tex = tex.replace("\\includegraphics[width=0.62\\linewidth]{figures/synthetic_curve.pdf}",
                   "\\includegraphics{figures/synthetic_curve.png}")
 
-tex = re.sub(r"\\begin\{tabularx\}\{\\linewidth\}\{(?:[^{}]|\{[^{}]*\{[^{}]*\}[^{}]*\}|\{[^{}]*\})*\}",
-             lambda m: "\\begin{tabular}{lll}" if "p{2.6cm}" in m.group(0) else "\\begin{tabular}{ll}", tex)
+def _tabular(m):
+    spec = m.group(0)[len("\\begin{tabularx}{\\linewidth}{"):-1]
+    spec = re.sub(r"@\{[^{}]*\}", "", spec)
+    spec = re.sub(r">\{(?:[^{}]|\{[^{}]*\})*\}", "", spec)
+    spec = re.sub(r"p\{[^{}]*\}", "p", spec)
+    cols = sum(spec.count(c) for c in "lcrXp")
+    return "\\begin{tabular}{" + "l" * cols + "}"
+
+
+tex = re.sub(r"\\begin\{tabularx\}\{\\linewidth\}\{(?:[^{}]|\{[^{}]*\{[^{}]*\}[^{}]*\}|\{[^{}]*\})*\}", _tabular, tex)
 tex = tex.replace("\\end{tabularx}", "\\end{tabular}")
 tex = tex.replace("\\|", "\\Vert ").replace("\\{", "\\lbrace ").replace("\\}", "\\rbrace ")
 

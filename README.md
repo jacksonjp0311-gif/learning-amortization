@@ -9,7 +9,7 @@
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![paper: CC BY 4.0](https://img.shields.io/badge/paper-CC%20BY%204.0-lightgrey.svg)
 ![python: 3.9+](https://img.shields.io/badge/python-3.9%2B-informational.svg)
-![tests: 37 passing locally](https://img.shields.io/badge/tests-37%20passing%20locally-brightgreen.svg)
+![tests: 49 passing locally](https://img.shields.io/badge/tests-49%20passing%20locally-brightgreen.svg)
 
 </div>
 
@@ -56,7 +56,7 @@ All results are proved in the paper and each has an executable test in [`tests/`
 git clone https://github.com/jacksonjp0311-gif/learning-amortization
 cd learning-amortization
 pip install -e ".[test,figures]"      # numpy is the only runtime dependency
-pytest -q                             # 37 tests: every proposition is checked
+pytest -q                             # 49 tests: every proposition is checked
 python examples/synthetic_toy.py      # synthetic worked example (~3 s)
 ```
 
@@ -125,9 +125,34 @@ When tasks compose, the library pays for itself almost at once. When they do not
 | Geometry-disabled | Savings come from the geometric (Bitwork) mechanism |
 | Order-shuffled, exact-repeat cache | Not a curriculum artefact, and more than caching |
 
-## Status and scope
+## Case study: PacketLM
 
-The motivating application is [PacketLM](https://github.com/jacksonjp0311-gif/PacketLM), a non-transformer, sparse-binary ("Bitwork") learner. **This repository reports no PacketLM results.** Section 10 of the paper is a *planned* evaluation protocol, and results will be added only from verified, reproducible artifacts.
+> **Real data, negative result.** Section 10 of the paper reports PacketLM's six pre-registered amortization experiments (G51–G57b). All numbers come from PacketLM's branch `g44-canonical-engine` at `8994490` and are recomputed here with the pinned instrument (`instrument-v1` = `70297af`): `python case_study/packetlm/reproduce.py`. Sources: [`case_study/packetlm/SOURCES.md`](case_study/packetlm/SOURCES.md).
+
+[PacketLM](https://github.com/jacksonjp0311-gif/PacketLM) is a non-transformer, sparse-binary ("Bitwork") learner with a persistent memory and a library of acquired, verified capabilities. Primary contrast: the persistent library learner C against an empty-memory reference B running the same engine, maintenance charged, CPU time, 7 fresh seeds per curriculum, 95% paired bootstrap. The cost ratio is $1-A$.
+
+| Exp. | Engine change (exact: identical replies) | Compositional $A_{36}$ [95% CI] | ratio | Unrelated $A_{24}$ [95% CI] | ratio |
+|---|---|---:|---:|---:|---:|
+| G51 | baseline, one process per call | −2.872 [−3.154, −2.561] | 3.87× | −5.080 [−5.325, −4.859] | 6.08× |
+| G53 | bounded qualification scan | −0.885 [−0.981, −0.790] | 1.89× | −5.065 [−5.456, −4.666] | 6.06× |
+| G54 | lean load / save / recall | −0.845 [−0.920, −0.773] | 1.85× | −3.312 [−3.479, −3.163] | 4.31× |
+| G56 | long-lived engine, **every arm charged equally** | −1.126 [−1.231, −1.039] | 2.13× | −16.99 [−17.35, −16.65] | 18.0× |
+| G57 | evidence-gated re-asks, indexed recall | −0.803 [−0.904, −0.716] | 1.80× | −5.867 [−6.436, −5.233] | 6.87× |
+| G57b | incremental persistent index | −0.677 [−0.887, −0.489] | 1.68× | −2.213 [−2.377, −2.037] | 3.21× |
+
+Irrelevant-state scaling (G57b, seeds 231–237): with 16,000 unrelated facts the per-task cost grows by $R^{1\mathrm{k}}_{16000}=2.90$ [2.57, 3.20] relative to 1,000 facts (G57 engine on the same seeds: 17.48), and $R_{16000}=3.75$ [3.22, 4.20] relative to none (G57 engine: 91.2). It is not flat (the pre-registered tolerance was 1.25).
+
+**What it shows.** No positive amortization in any experiment, so learning to learn is not shown. The learner does reuse what it learns (147 of 252 compositional tasks through a library capability, 0 wrong verified answers), but reuse costs more than it saves. The penalty breaks down into maintenance, library scanning, per-call state work and process start-up, and exact engineering cut the unrelated-task gap from 18.0× to 3.21× without changing a reply. Rows use different seeds; G57b had not been independently verified when this was written. Section 11 turns the lessons into results with proofs:
+
+| Result | Statement |
+|---|---|
+| Interpretation (Remark 2) | The cost ratio is exactly $1-A$: $A=-2.87$ means 3.87×, not $e^{2.87}\approx 18\times$ |
+| Chain rule (Prop. 7) | $1-\hat A(X\Vert Z)=(1-\hat A(X\Vert Y))(1-\hat A(Y\Vert Z))$ for point estimates on the same seeds |
+| Protocol dependence (Def. 10, Prop. 8) | With a fixed per-call overhead $f$, the cost ratio is a mediant of the call ratio and the work ratio, monotone in $f$, and its sign can flip. Only protocol-equivalent comparisons are valid |
+| Partial identification (Prop. 9, Cor. 2) | Under unequal completion $A$ lies in a sharp interval; the tipping point for a sign change is $\tilde C_L-\tilde C_R$ |
+| Irrelevant-state scaling (Def. 12, Prop. 10) | If stored knowledge grows without bound, positive asymptotic amortization needs **bounded** $R_N$; sublinear growth is not enough |
+| Exactness (Def. 13, Prop. 11) | Exact optimizations are cost contrasts at identical accuracy |
+
 
 ## Repository layout
 
@@ -138,8 +163,11 @@ amortization/          reference implementation (numpy only)
   stats.py             ratio-of-means estimator, delta-method SE, paired bootstrap,
                        exact sign-flip test, trend slope
   transfer.py          forward-transfer link (Prop. 5)
+  diagnostics.py       v0.2 additions (Sec. 11): cost ratio, chain rule, protocol model,
+                       censoring bounds, irrelevant-state ratio, scaling bounds
   __main__.py          CLI report from a cost-log CSV
 tests/                 one or more tests per proposition
+case_study/packetlm/   PacketLM cost logs (copied from 8994490), SOURCES.md, reproduce.py
 examples/
   synthetic_toy.py     SYNTHETIC worked example; writes examples/results/
 paper/
@@ -164,6 +192,12 @@ REVIEW.md              independent review notes and what was fixed
 | Def. 8 novelty-stratified, Def. 9 probe curve | `novelty_stratified_amortization`, `probe_amortization` |
 | Sec. 5.2 trend | `trend_slope` |
 | Sec. 6.2 estimators and tests | `point_estimate`, `delta_method_se`, `bootstrap_ci`, `sign_flip_test`, `estimate` |
+| Remark 2, Prop. 7 interpretation and chain rule | `diagnostics.cost_ratio`, `log_cost_ratio`, `reverse_amortization`, `chain_amortization` |
+| Prop. 8 protocol dependence | `diagnostics.protocol_cost_ratio`, `protocol_ratio_limits` |
+| Prop. 9, Cor. 2 censoring bounds, tipping point | `diagnostics.censoring_bounds`, `tipping_point` |
+| Def. 12, Prop. 10 irrelevant-state scaling | `diagnostics.irrelevant_state_ratio`, `scaling_amortization_bounds` |
+
+**Pinned instrument.** Tag `instrument-v1` marks commit `70297af`, the version PacketLM pins. `metric.py`, `stats.py`, `transfer.py` and `__main__.py` are unchanged since then; v0.2 adds code only in new modules.
 
 ## Building the paper
 
@@ -182,7 +216,7 @@ This repository has no CI workflows on purpose. Tests and builds run locally.
   author      = {Jackson, James},
   institution = {GitHub},
   type        = {Working paper},
-  number      = {v0.1},
+  number      = {v0.2},
   year        = {2026},
   url         = {https://github.com/jacksonjp0311-gif/learning-amortization}
 }

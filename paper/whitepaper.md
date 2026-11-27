@@ -4,7 +4,7 @@
 
 ## Abstract
 
-A learning system that accumulates knowledge is not necessarily a system that gets better at learning. We make the distinction measurable. *Learning amortization* compares the *total* cost a continual learner pays to reach a fixed accuracy target on every task of a sequence with the cost paid by a reference learner on the same sequence: $A_n = 1 - C_{\text{continual}}(n)/C_{\text{reference}}(n)$. Costs are charged over the whole lifecycle of what is learned: acquisition, verification, storage, retrieval, maintenance and execution, plus any one-time setup. We give formal definitions and prove the basic properties of the metric: its range and sign, unit invariance (and the precise sense in which it is *not* invariant), an exact weighted-average form, an additive decomposition into cost components, its asymptotic limit and a closed-form break-even point. We show that, for non-decreasing learning curves, the AUC-based forward-transfer metric of Continual World is exactly an amortization ratio whose cost is training steps averaged over all accuracy thresholds, which places the proposal inside existing transfer metrics instead of beside them. We separate first-order amortization (past learning pays for future learning) from second-order evidence of learning to learn (the savings themselves grow with experience), specify paired-seed estimators, confidence intervals, exact tests and censoring bounds, and list the controls and pitfalls that decide whether a positive $A_n$ means anything. A small open-source reference implementation reproduces every quantity, and a clearly labelled synthetic example shows the metric detecting both genuine amortization and the classical “utility problem” in which a growing library makes learning *more* expensive. The motivating application is PacketLM, a non-transformer sparse-binary learner; this paper reports *no* PacketLM results and gives only a planned evaluation protocol.
+A learning system that accumulates knowledge is not necessarily a system that gets better at learning. We make the distinction measurable. *Learning amortization* compares the *total* cost a continual learner pays to reach a fixed accuracy target on every task of a sequence with the cost paid by a reference learner on the same sequence: $A_n = 1 - C_{\text{continual}}(n)/C_{\text{reference}}(n)$. Costs are charged over the whole lifecycle of what is learned: acquisition, verification, storage, retrieval, maintenance and execution, plus any one-time setup. We give formal definitions and prove the basic properties of the metric: its range and sign, unit invariance (and the precise sense in which it is *not* invariant), an exact weighted-average form, an additive decomposition into cost components, its asymptotic limit and a closed-form break-even point. We show that, for non-decreasing learning curves, the AUC-based forward-transfer metric of Continual World is exactly an amortization ratio whose cost is training steps averaged over all accuracy thresholds, which places the proposal inside existing transfer metrics instead of beside them. We separate first-order amortization (past learning pays for future learning) from second-order evidence of learning to learn (the savings themselves grow with experience), specify paired-seed estimators, confidence intervals, exact tests and censoring bounds, and list the controls and pitfalls that decide whether a positive $A_n$ means anything. A small open-source reference implementation reproduces every quantity, and a clearly labelled synthetic example shows the metric detecting both genuine amortization and the classical “utility problem” in which a growing library makes learning *more* expensive. We then report the first sustained application, to PacketLM, a non-transformer sparse-binary learner. In six pre-registered experiments, five of them independently reproduced, every primary amortization contrast is negative: the persistent learner costs $1.68$ to $18.0$ times the empty-memory reference. Exact engineering narrowed the gap on unrelated tasks from $18.0\times$ to $3.21\times$ without changing a single reply, and cut the growth of per-task cost with $16{,}000$ irrelevant stored facts from $91\times$ to $3.75\times$. The case study yields five methodological results, each formalized with proof: cost ratios obey a chain rule and $1-A$, not $e^{-A}$, is the cost ratio; amortization is valid only under a protocol-equivalent comparison, and a fixed per-invocation overhead provably pulls the measured ratio towards the invocation ratio (here hiding a gap of $18\times$ behind one of $4\times$); unequal completion makes $A$ only partially identified, with sharp bounds; positive asymptotic amortization under unbounded knowledge growth requires *bounded* irrelevant-state scaling, so sublinear growth is not enough; and exactness-preserving optimizations are accuracy-matched cost contrasts.
 
 ## 1. Introduction
 
@@ -14,7 +14,7 @@ We argue that the right currency for the central question is *cost at matched ac
 
 **Contributions.**
 
-This is a measurement paper; it proposes no learning algorithm and makes no empirical claim about any real system.
+This is a measurement paper; it proposes no learning algorithm. Its only empirical claims concern the PacketLM case study, and they are negative.
 
 1.  A **full-lifecycle cost functional** with an explicit accuracy-matching rule (cost-to-target), declared prices and an attribution rule for costs between tasks (Section 3).
 
@@ -25,6 +25,10 @@ This is a measurement paper; it proposes no learning algorithm and makes no empi
 4.  A separation of **first-order amortization from second-order learning to learn**, via novelty stratification, fork-and-discard probe curves and trend tests (Section 5).
 
 5.  An **estimation and control protocol** with paired seeds, intervals, exact tests and censoring bounds (Sections 6, 7 and 8), and a **reference implementation** with a synthetic worked example (Section 9).
+
+6.  An **empirical case study** of PacketLM over six pre-registered experiments, with a cost decomposition, an irrelevant-state scaling test and independent reproduction (Section 10). It reports no positive amortization.
+
+7.  **Methodological results** from that study: a chain rule for cost ratios and a worked interpretation note (Proposition 7, Remark 2), protocol equivalence (Definition 10, Proposition 8), partial identification under censoring (Proposition 9), an irrelevant-state scaling diagnostic and its relation to asymptotic amortization (Definition 12, Proposition 10), exactness-preserving optimization (Proposition 11), and reporting standards (Section 11.6).
 
 ## 2. Related work and novelty assessment
 
@@ -379,6 +383,12 @@ Controls. The first six come from the PacketLM qualification plan; the last two 
 
 9.  **Dropping failures.** Removing censored tasks or failed seeds is selection on the outcome (Proposition 6).
 
+10. **Unequal execution protocols.** Charging the learner and the reference under different process, persistence or start-up regimes can change $A$ by an order of magnitude and even its sign (Proposition 8). *Mitigation:* protocol-equivalent comparisons only (Definition 10).
+
+11. **Misreading $A$.** $A$ is not a log ratio; the cost ratio is $1-A$ (Remark 2).
+
+12. **Shared machines.** CPU and wall-clock contrasts move with background load. *Mitigation:* run registered timing runs alone, under a lock, and record the load (Section 11.6).
+
 ## 9. Reference implementation and a synthetic worked example
 
 The package `amortization/` implements every quantity above. It includes cost logs with declared prices (Definition 2), $A_n$, $a_i$, $A^{(k)}_N$, $n^\star$, the decomposition (4), the estimator (5), the standard error (6), the paired bootstrap, the exact sign-flip test, the trend $\beta$, $A_n^{\mathrm{nov}}$, $\Pi(k)$, and the functions used to check Proposition 5. Each proposition has a test.
@@ -415,27 +425,321 @@ SYNTHETIC toy example (not PacketLM). The component contributions $D_k$ (Proposi
 
 In the compositional curriculum, $A_{12}$ is large and the trend is positive. The decomposition shows that the savings are almost entirely in acquisition, with small overheads from retrieval, maintenance and storage. The base arm is censored on 12 of 240 tasks (11 times the depth-5 search space is exhausted without a consistent program, once it commits to a program that fails the sealed inputs; the operation budget is never hit), while the library arm is never censored. By Proposition 6 the reported $\hat A_{12}$ is therefore a lower bound. In the unrelated curriculum the library cannot help, because every stored entry enlarges the branching factor. $A_{12}$ is about $-2.3$, the trend is negative, and break-even never occurs. This is a minimal instance of the utility problem (Corollary 1). The example also illustrates Section 5. A positive $\beta$ here comes from tasks that are built to reuse earlier solutions, which is first-order reuse. On its own it would not establish learning to learn without novel probes.
 
-## 10. Planned evaluation on PacketLM
+## 10. Empirical case study: PacketLM
 
-PacketLM (<https://github.com/jacksonjp0311-gif/PacketLM>) is a non-transformer learner built on sparse binary (“Bitwork”) representations, with persistent memory, acquired constructions and acquired relational procedures. **No PacketLM result is reported here.** The planned protocol follows its G46–G48 qualification plan and has five parts.
+PacketLM (<https://github.com/jacksonjp0311-gif/PacketLM>) is a non-transformer learner built on sparse binary (“Bitwork”) representations, with persistent memory, acquired constructions and acquired relational procedures (*capabilities*) that are *qualified* by an open-world scan before they are trusted. This section reports its pre-registered learning-amortization experiments G51–G57b, all measured with the reference implementation of this paper pinned at commit `70297af` (tag `instrument-v1`) and used unmodified. Every number below is taken from PacketLM’s branch `g44-canonical-engine` at commit `8994490` (files `docs/G5*.md` and `docs/evidence/g5*/`) or from its independent verification reports (branches `verify-*`); Section 10.5 lists how each value was re-derived. **The result is negative: no experiment shows positive amortization.**
 
-1.  *Instrumentation.* Count candidate evaluations, primitive bit operations, bytes held, retrieval probes, retraction and dependency propagation steps, checkpoint I/O and teacher turns. Map each count to a component of $\mathcal{K}$.
+### 10.1 Design common to all experiments
 
-2.  *Arms.* Run the continual engine and the controls of Table 1 on one frozen engine hash, with $S\ge 10$ seeds and a randomised curriculum of unfamiliar relation names, entities and withheld graphs.
+*Curricula.* The *compositional* curriculum has $N=36$ tasks in two phases; later tasks compose relations taught earlier, so reuse is possible. The *unrelated* curriculum has $N=24$ tasks, each in a fresh relation family, so nothing can be reused. *Arms.* C is the persistent learner whose library offers acquired capabilities; B resets to an empty state before every task (the empty-memory reference of Table 1); P is persistent but primitive-only; F is frozen after the first phase. *Cost.* The single resource is CPU time ($w$ is a scalar, so Proposition 1(ii) makes the unit irrelevant). Up to G54 it is whole-process CPU (`getrusage` user$+$system, including interpreter start-up) of every engine invocation, one process per call. From G56 on, every arm runs under the same long-lived engine and is charged the CPU of its calls, so process start-up is paid once per arm run. Maintenance calls issued by the teacher (corrections, transfer checks and retention re-asks, charged to the last task of each family) are included in the primary contrasts, written “$+$maint”. *Target and censoring.* A task meets the target ($\delta_i=0$) only if every sealed reply on it is correct; otherwise it is censored. *Inference.* $S=7$ fresh seeds per curriculum in every experiment, the ratio-of-means estimator (5), a paired seed bootstrap with 5000 resamples, and a claim only if the 95% interval excludes $0$ in the claimed direction. With $S=7$ the smallest attainable two-sided sign-flip $p$-value is $2/2^7=0.0156$ (Section 6.2), so the intervals carry the decision. *Pre-registration.* Arms, seeds, contrasts, decision rules and predictions were committed before each registered run (Section 11.6).
 
-3.  *Primary endpoint.* $\hat A_N$ against the empty-memory reference, with novelty-stratified $A^{\mathrm{nov}}_N$ and the probe curve $\Pi(k)$ as the learning-to-learn endpoints. Report the per-resource results and censoring counts.
+### 10.2 The amortization sequence
 
-4.  *Pre-registration.* Before any run, commit $\alpha_i$, $B_i$, $w$, the generator and the analysis code to the repository.
+Table 3 lists the primary contrast $A_N(\text{C}\Vert \text{B})$ of each experiment. Each row is a different engine version with its own fresh seeds, and in each row the reference B runs the same engine version and execution mechanisms as C (differing only in starting every task empty, without a library), so every row is a like-for-like comparison. Comparisons *across* rows are descriptive, not registered contrasts.
 
-5.  *Reporting.* Publish negative results with the same prominence as positive ones.
+<div id="tab:pl-seq">
 
-## 11. Limitations
+| Exp. | Engine change (exact unless stated)          | Compositional $A_{36}$ \[95% CI\], $1-A$ | Unrelated $A_{24}$ \[95% CI\], $1-A$    |
+|:-----|:---------------------------------------------|:-----------------------------------------|:----------------------------------------|
+| G51  | baseline engine, one process per call        | $-2.872\ [-3.154,-2.561]$, $3.87\times$  | $-5.080\ [-5.325,-4.859]$, $6.08\times$ |
+| G53  | bounded qualification scan                   | $-0.885\ [-0.981,-0.790]$, $1.89\times$  | $-5.065\ [-5.456,-4.666]$, $6.06\times$ |
+| G54  | lean per-call load, save and recall          | $-0.845\ [-0.920,-0.773]$, $1.85\times$  | $-3.312\ [-3.479,-3.163]$, $4.31\times$ |
+| G56  | long-lived engine, every arm charged equally | $-1.126\ [-1.231,-1.039]$, $2.13\times$  | $-16.99\ [-17.35,-16.65]$, $18.0\times$ |
+| G57  | evidence-gated re-asks, indexed recall       | $-0.803\ [-0.904,-0.716]$, $1.80\times$  | $-5.867\ [-6.436,-5.233]$, $6.87\times$ |
+| G57b | incremental persistent index                 | $-0.677\ [-0.887,-0.489]$, $1.68\times$  | $-2.213\ [-2.377,-2.037]$, $3.21\times$ |
 
-$A_n$ depends on declared prices, targets and budgets. We make this explicit rather than removing it, and sensitivity analyses are mandatory. It compares two learners on one task distribution; it is not a measure of general intelligence. Cost-to-target needs a well-defined accuracy, which is harder for open-ended language behaviour than for the structured tasks considered here. Charging storage by holding time is one reasonable convention among several, and others are possible. The novelty criterion is supplied by the experimenter and can be mis-specified. Finally, the worked example is tiny and synthetic by design.
+PacketLM primary contrasts $A_N(\text{C}{+}\text{maint}\thinspace \Vert \thinspace \text{B})$ (sources: `docs/G51.md`, `G53.md`, `G54.md`, `G56.md`, `G57.md`, `G57b.md` at `8994490`). $1-A$ is the cost ratio $C_L/C_R$ (Remark 2). Every interval lies wholly below $0$: no learning-to-learn claim is made in any experiment. G56 changes the execution protocol; its jump is explained in Section 11.2.
 
-## 12. Conclusion
+</div>
 
-Learning amortization asks whether past learning pays for future learning once every lifecycle cost is charged at matched accuracy. The metric is simple, but interpreting it needs the properties proved here, especially weighting, asymmetry, asymptotics, break-even and censoring bounds. It also needs controls that separate reuse of real capability from caching, and a second-order analysis that separates learning to learn from accumulation. We offer it as a measurement protocol to be falsified in practice.
+Each engine change was required to be *exact*: the new engine’s reply streams (and, from G57, final state files) had to equal the old engine’s on every seed, which was a run-validity guard (Definition 13). Exactness makes the saving of each mechanism a pure cost contrast at perfectly matched accuracy (Proposition 11). Table 4 lists these savings together with the reuse contrast against the primitive-only control.
+
+<div id="tab:pl-mech">
+
+| Exp. |  Mechanism saving, comp.  | Mechanism saving, unrel.  | Reuse $A_{36}(\text{C}\Vert \text{P})$, comp. |
+|:-----|:-------------------------:|:-------------------------:|:---------------------------------------------:|
+| G51  |             —             |             —             |           $-0.774\ [-0.866,-0.665]$           |
+| G53  | $+0.534\ [+0.519,+0.551]$ | $+0.010\ [-0.004,+0.023]$ |           $-0.160\ [-0.208,-0.110]$           |
+| G54  | $+0.174\ [+0.170,+0.178]$ | $+0.335\ [+0.322,+0.344]$ |           $-0.305\ [-0.343,-0.270]$           |
+| G56  | $+0.396\ [+0.376,+0.417]$ | $+0.704\ [+0.699,+0.710]$ |           $-0.531\ [-0.606,-0.454]$           |
+| G57  | $+0.041\ [+0.020,+0.062]$ | $+0.593\ [+0.584,+0.601]$ |           $-0.420\ [-0.502,-0.355]$           |
+| G57b | $+0.041\ [+0.032,+0.049]$ | $+0.387\ [+0.378,+0.396]$ |           $-0.394\ [-0.566,-0.226]$           |
+
+Exact-mechanism savings $A_N(\text{new}{+}\text{maint}\thinspace \Vert \thinspace \text{previous}{+}\text{maint})$ for the persistent library learner, and the reuse contrast with maintenance charged in both arms (same sources as Table 3). On the unrelated curriculum the library is never used, and C and P differ in cost by at most $2.4\%$ in every experiment. The G57 compositional saving is small and timing-sensitive: the verifier’s 7-seed rerun gave $+0.032\ [+0.025,+0.040]$ (`verify-35bda6b`).
+
+</div>
+
+**Outcomes, reported separately from cost.**
+
+Following Section 11.3, completion, qualification and censoring are reported per arm (sums over 7 seeds). On the compositional curriculum C solved $252/252$ tasks in every experiment, with 147 of them acquired through a library capability; in G51, 144 of those 147 used a *qualified* capability. The reference B solved 249 (G51), 251 (G53), 247 (G54, G56, G57b) and 246 (G57); its unsolved tasks are censored, which by Proposition 6 makes each recorded compositional $A_{36}$ a *lower* bound. On the unrelated curriculum all arms solved the same number of tasks (168, 168, 167, 167, 167, 166 of 168 in G51–G57b). C qualified 249, 251, 247, 248, 246 and 247 tasks in G51, G53, G54, G56, G57 and G57b. The persistent library learner returned $0$ wrong *qualified* sealed answers in every registered run; this was a run-validity guard.
+
+### 10.3 Where the cost goes: the utility problem, decomposed
+
+The engine does not split CPU inside a call into the components of Definition 2, so the decomposition below comes from call types and profiles rather than from Proposition 2.
+
+1.  **Maintenance.** In G51, maintenance was $65\%$ of C’s unrelated-curriculum cost ($48.4$ of $74.8$ s); without it, $A_{24}(\text{C}\Vert \text{B})=-1.15\ [-1.18,-1.12]$ ($2.15\times$). Under the long-lived protocol (G56) it was $77\%$ ($11.0$ of $14.4$ s; 504 re-ask calls at $21.9$ ms each, against $2.0$ ms per call for B). Evidence-gated re-asks in G57 cut it from $12.46$ to $2.72$ s ($-78\%$) with byte-identical replies and states.
+
+2.  **Library scan.** On the compositional curriculum the library shortens acquisition search but enlarges the open-world qualification scan, since every library capability is a scan primitive. In the G53 profile (cumulative cProfile seconds under a parallel run, to be read as shares) C’s scan took $220.0$ against P’s $90.2$, while C’s search fell to $6.8$ against P’s $56.2$. After G57b, the qualification scan is still $11.92$ s of a $16.76$ s compositional C run (dev seed, descriptive profile).
+
+3.  **Per-call state work.** Loading, validating and saving the whole state, and recall over every stored packet, grow with the state. With 16,000 padding facts, the G57 engine still rebuilt its fact index on every call, re-validated the whole state after every mutating call and rescanned every fact to list relations; the workload took $5.91$ s against $0.10$ s with no padding (G57b profile).
+
+4.  **Process start-up.** Under one process per call, a fixed floor of $f_0=25.9$ ms per process was paid by every arm (G54). On the unrelated curriculum C’s 911 processes cost $23.6$ s at the floor alone, more than twice B’s whole cost ($11.4$ s); the floor’s share of the C–B gap was $0.35$ (unrelated) and $0.12$ (compositional).
+
+On the unrelated curriculum, then, the penalty is state size and maintenance, not library search: the library was used on $0$ tasks. This is the utility problem of Corollary 1, with retrieval and maintenance entering only as overheads.
+
+### 10.4 Irrelevant-state scaling
+
+G57 and G57b added a direct test of the hypothesis that a continual learner can hold an expanding body of knowledge without every computation inspecting all of it (Definition 12). A fixed workload of 10 tasks was run after padding the state with $N$ unrelated facts that the workload never touches. Table 5 gives the registered G57b result, in which the G57 engine (Xi) was re-run beside the G57b engine (Xj) on the same seeds.
+
+<div id="tab:pl-scale">
+
+| Engine          |  $N=0$  |  $1000$  |  $4000$  |  $16000$  | $R_{16000}$ (vs. $N{=}0$) | $R^{1\mathrm{k}}_{16000}$ (vs. $N{=}1000$) |
+|:----------------|:-------:|:--------:|:--------:|:---------:|:-------------------------:|:------------------------------------------:|
+| Xs (G56 engine) | $2.397$ | $19.484$ | $85.696$ | $381.799$ |  $160.1\ [148.4,169.1]$   |           $19.59\ [19.05,20.31]$           |
+| Xi (G57)        | $2.297$ | $11.784$ | $47.343$ | $205.643$ |   $91.2\ [81.6,100.0]$    |           $17.48\ [16.67,18.41]$           |
+| Xj (G57b)       | $2.343$ | $3.034$  | $3.704$  |  $8.607$  |    $3.75\ [3.22,4.20]$    |            $2.90\ [2.57,3.20]$             |
+
+Mean CPU per workload task (ms, mean over seeds 231–237) against $N$ padding facts, and the scaling ratio of Definition 12 with 95% bootstrap intervals (source: `docs/G57b.md` §6a and `docs/evidence/g57b/scale/`). The G57 registered run on seeds 221–227 gave $R_{16000}=91.9\ [86.5,95.7]$ for Xi.
+
+</div>
+
+The pre-registered “flat” criterion (upper bound of $R^{1\mathrm{k}}_{16000}\le 1.25$) failed for both engines, so cost independent of unrelated knowledge is *not* claimed. But the G57b engine cut per-task cost at $N=16000$ from $205.6$ to $8.6$ ms ($24\times$), and both pre-registered “material” halvings held: $R^{1\mathrm{k}}_{16000}$ fell from $17.48$ to $2.90$ and $R_{16000}$ from $91.2$ to $3.75$, with replies and states identical across engines. In Table 3 the same change moved the unrelated cost ratio from $6.87\times$ (G57) to $3.21\times$ (G57b), different seeds. Part of that gain is the reference getting slower: the index costs fresh small states a little, $A_{24}(\text{Bj}\Vert \text{Bi})=-0.171\ [-0.232,-0.111]$.
+
+### 10.5 Independent verification and reproducibility
+
+Each milestone up to G57 was checked by a separate verifier working in its own clone; its reports are `docs/verification/VERIFY_*.md` on the `verify-*` branches.
+
+- `verify-cdb4828` (G51): every registered $A$ value and interval reproduced exactly from the committed CSVs with the pinned instrument; a $2{+}2$-seed rerun was behaviourally identical. It also found the misreading of $A$ discussed in Remark 2.
+
+- `verify-050bebd` (G53): registered $A$ values exact; the bounded scan was exact on 18/18 arm-seed reply streams and on 1,400 random differential sessions.
+
+- `verify-3e2783c` (G54): all 13 $A$ values exact. It found that the lean save was not exact *in general*: it reordered keys, and replies could depend on that order. No registered seed was affected, and the defect was fixed and re-checked before G56.
+
+- `verify-d6cbcf3` (G56): all 20 $A$ values and all 77 G54 reply hashes reproduced; the long-lived protocol was exact over about 2,000 adversarial calls including `kill -9`; one fail-stop crash-recovery defect was found.
+
+- `verify-35bda6b` (G57): 18/18 contrasts exact; a 1,350-session adversarial differential (47,105 calls) found 0 differences in replies or state; rule F reproduced.
+
+For this paper, the 42 contrasts and 9 scaling ratios quoted in this section were recomputed from copies of PacketLM’s committed cost logs with the pinned instrument (`case_study/packetlm/reproduce.py`); all agree to the printed precision. **G57b had not been independently verified when this version was written**, so its numbers rest on PacketLM’s own registered receipts and on our recomputation from its CSVs.
+
+### 10.6 What the case study shows
+
+1.  *No positive amortization.* All six primary contrasts are negative on both curricula, with intervals wholly below $0$. Learning to learn is not shown. The G51 trend of the per-task log ratio was $-0.049$ per task: the persistent learner’s relative cost grew along the sequence.
+
+2.  *Reuse without savings.* C reused acquired capabilities on 147 of 252 compositional tasks, with no wrong qualified answers, yet reuse cost more than primitive-only persistence in every experiment (Table 4). This is first-order reuse whose overhead exceeds its savings.
+
+3.  *The gap is mostly removable engineering.* Exact mechanisms cut the persistent learner’s cost by up to $70\%$ per step. Under equal charging the gap went from $18.0\times$ (G56) to $3.21\times$ (G57b) on unrelated tasks and from $2.13\times$ to $1.68\times$ on compositional ones (descriptive, different seeds).
+
+4.  *What remains is identified.* The qualification scan over library capabilities on compositional tasks, and residual state-proportional work (full validation, snapshots) on unrelated ones.
+
+The controls of Table 1 beyond empty-memory, primitive-only and frozen (symbolic reference, geometry-disabled, shuffled-evidence, order-shuffled, exact-repeat cache) have not yet been run, and neither have the novelty-stratified and probe instruments of Section 5. A positive $A_N$ would still need them before it could support a learning-to-learn claim.
+
+## 11. Methodological lessons, formalized
+
+The case study exposed five ways an amortization result can be misread or mis-measured. We state each as a definition or proposition, with a proof, and illustrate it on the PacketLM data.
+
+### 11.1 Reading $A$ correctly
+
+<div id="rem:interp" class="remark">
+
+*Remark 2* (Interpretation; cost ratio is $1-A$). By Definition 5 the cost ratio is exactly $\rho_n := C_L(n)/C_R(n) = 1-A_n$, and by Proposition 1(iv) the log ratio is $\ell_n=-\log(1-A_n)$. $A$ is *not* a log ratio. *Worked example* (G51, compositional): C$+$maint spent $215.8$ s and B $55.7$ s over seven seeds, so $\hat A_{36} = 1-215.8/55.7 = -2.872$. The correct reading is “C cost $1-A = 3.87$ times as much as B”; equivalently $\ell = -\log 3.87 = -1.354$, and from B’s side $A(\text{B}\Vert \text{C}) = -A/(1-A) = 0.742$, i.e. B saved $74\%$ relative to C. PacketLM’s first write-up read $A=-2.87$ as a log ratio and reported $e^{2.9}\approx 18\times$, and similarly “$2.2\times$” for $A=-0.774$, whose correct ratio is $1.77\times$ (`verify-cdb4828`, finding G1). $e^{-A}$ has no meaning here. We recommend printing $1-A$ next to every negative $A$.
+
+</div>
+
+<div id="prop:chain" class="proposition">
+
+**Proposition 7** (Chain rule). Let $X$, $Y$, $Z$ be arms run on the same seeds with the same horizon, and let $\hat A$ be the ratio-of-means estimator (5), with all totals positive. Then
+
+```math
+1-\hat A(X\Vert Z) = \bigl(1-\hat A(X\Vert Y)\bigr)\bigl(1-\hat A(Y\Vert Z)\bigr).
+```
+
+The same identity holds for the population quantity $A_n=1-\mathbb{E}X/\mathbb{E}Z$.
+
+</div>
+
+<div class="proof">
+
+*Proof.* $1-\hat A(X\Vert Z)=\sum_s X_s/\sum_s Z_s = \bigl(\sum_s X_s/\sum_s Y_s\bigr)\bigl(\sum_s Y_s/\sum_s Z_s\bigr)$. Replace sums by expectations for the population form. ◻
+
+</div>
+
+Cost ratios therefore multiply, while $A$ values do not add. The identity holds for point estimates only, not for interval endpoints. For example, on G57b’s compositional seeds, $(1-0.041)\times(1+0.801)\times(1+0.030)^{-1}=1.677$ reproduces $1-\hat A(\text{Cj}\Vert \text{Bj})=1.677$ from the contrasts Cj$\Vert$Ci, Ci$\Vert$Bi and Bj$\Vert$Bi.
+
+### 11.2 Protocol equivalence and equal charging
+
+<div id="def:protocol-eq" class="definition">
+
+**Definition 10** (Execution protocol; protocol-equivalent comparison). An *execution protocol* $\pi$ is everything that determines how a learner’s work is executed and charged, apart from the learner’s own decisions: the process model (one process per call or a long-lived server), persistence and durability (load, validation, save, journal, snapshot), start-up and tear-down, the engine source, and the load conditions under which resources are measured. A comparison $A_n(L\Vert R)$ is *protocol-equivalent* if (P1) both arms run under the same $\pi$; (P2) the attribution rule of Definition 2 is applied under $\pi$ to every component of both arms, including start-up and maintenance; and (P3) any difference in what the two arms are charged comes from their behaviour (for example, more calls), never from the accounting. Only protocol-equivalent comparisons support amortization claims.
+
+</div>
+
+A simple model makes the dependence on $\pi$ explicit. Suppose that under a family of protocols indexed by a fixed per-invocation overhead $f\ge 0$, arm $X$ makes $\nu_X$ charged invocations and does work $W_X$ above the floor, both independent of $f$, so that $C_X(f)=f\nu_X+W_X$. Write $\rho(f)=C_L(f)/C_R(f)$ for the cost ratio, $\mu=\nu_L/\nu_R$ for the invocation ratio and $\omega=W_L/W_R$ for the work ratio.
+
+<div id="prop:protocol" class="proposition">
+
+**Proposition 8** (Protocol dependence of the cost ratio). Let $\nu_R>0$ and $W_R>0$.
+
+1.  $\rho(f)=\lambda(f)\thinspace \mu+(1-\lambda(f))\thinspace \omega$ with $\lambda(f)=f\nu_R/(f\nu_R+W_R)\in[0,1)$, increasing in $f$.
+
+2.  $\rho$ is strictly monotone in $f$ unless $\mu=\omega$, increasing if $\mu>\omega$ and decreasing if $\mu<\omega$. Also $\rho(0)=\omega$ and $\rho(f)\to\mu$ as $f\to\infty$.
+
+3.  The sign of $A=1-\rho$ depends on the protocol whenever $1$ lies strictly between $\mu$ and $\omega$. If $\mu<1<\omega$, then $A<0$ for all sufficiently small $f$ and $A>0$ for all sufficiently large $f$, and symmetrically if $\omega<1<\mu$.
+
+4.  *Mixed charging.* If $L$ is charged under protocol $\pi'$ and $R$ under $\pi$, then $1-A(L^{\pi'}\Vert R^{\pi}) = \bigl(1-A(L^{\pi'}\Vert L^{\pi})\bigr)\bigl(1-A(L^{\pi}\Vert R^{\pi})\bigr)$: a mixed comparison is the protocol-equivalent ratio multiplied by the protocol’s effect on $L$ alone.
+
+</div>
+
+<div class="proof">
+
+*Proof.* (i) $\rho(f)=\dfrac{f\nu_L+W_L}{f\nu_R+W_R}=\dfrac{f\nu_R}{f\nu_R+W_R}\cdot\dfrac{\nu_L}{\nu_R}+\dfrac{W_R}{f\nu_R+W_R}\cdot\dfrac{W_L}{W_R}$. Then $\lambda'(f)=\nu_RW_R/(f\nu_R+W_R)^2>0$, $\lambda(0)=0$ and $\lambda<1$. (ii) $\rho'(f)=(\nu_LW_R-W_L\nu_R)/(f\nu_R+W_R)^2$, which has the sign of $\mu-\omega$. The limits follow from (i), since $\lambda(f)\to1$. (iii) By (ii), $\rho$ is continuous and monotone, with $\rho(0)=\omega>1$ and $\lim_{f\to\infty}\rho=\mu<1$, so $\rho>1$ near $0$ and $\rho<1$ for large $f$. The other case is symmetric. (iv) This is Proposition 7 with $X=L^{\pi'}$, $Y=L^{\pi}$, $Z=R^{\pi}$. ◻
+
+</div>
+
+**Illustration (G54$\to$G56).**
+
+G54 measured the per-process floor $f_0=25.9$ ms. On the unrelated curriculum C made $\nu_L=911$ invocations against B’s $407$, with above-floor work $W_L=25.7$ s and $W_R=0.9$ s. So $\mu=2.24$ and $\omega\approx 29$, and the model gives $\rho(f_0)=(23.6+25.7)/(10.5+0.9)\approx4.32$, which matches the registered $4.31\times$ up to the rounding of its inputs. A large per-call floor pulls the ratio towards the invocation ratio $\mu$ and *hides* the work ratio $\omega$. When G56 replaced the per-process protocol with a long-lived engine for *every* arm, the floor almost vanished, and the measured ratio on G56’s seeds rose from $4.16\times$ (per-process accounting) to $18.0\times$ (equal long-lived charging) on unrelated tasks, and from $1.70\times$ to $2.13\times$ on compositional ones. This is the direction (ii) predicts, since $\mu<\omega$. (The long-lived engine also changes the work terms and the rows use different seeds, so this is a qualitative check of the model, not a fit.) Unequal charging would have hidden the effect in the opposite direction. Recomputing from G56’s cost logs, charging C under the long-lived engine but B per process gives $\hat A_{24}(\text{Cs}\Vert \text{Bl})=-0.231$ ($1.23\times$) instead of the protocol-equivalent $-16.99$ ($18.0\times$). By (iv) this equals $(1-0.704)\times 4.16$: the protocol’s $70\%$ saving on C, multiplied into a ratio that is otherwise unchanged. PacketLM adopted (P1)–(P3) before G56: every arm, including the empty-state reference, runs on the identical engine and loading protocol, while B still starts every task from a fresh empty state.
+
+### 11.3 Accuracy matching, qualification and censoring
+
+<div id="def:profile" class="definition">
+
+**Definition 11** (Outcome profile). For each arm, the *outcome profile* reports, separately from cost: the number of tasks meeting the target ($\sum_i(1-\delta_i)$), the number whose committed hypothesis passed the learner’s own verification (*qualified*), the number censored, the reason for censoring (target missed, budget, run failure), and the number of wrong answers among verified ones. A contrast is *accuracy-matched* if $\delta_i(L)=\delta_i(R)=0$ for every task and seed.
+
+</div>
+
+When a contrast is not accuracy-matched, $A_n$ is only partially identified. Proposition 6 gives its direction; the following proposition gives sharp bounds and covers the case where both arms are censored.
+
+<div id="prop:partial" class="proposition">
+
+**Proposition 9** (Partial identification under censoring). For each task $i\le n$ and arm $X\in\lbrace L,R\rbrace$, let the true cost-to-target satisfy $c_i(X)\in[\tilde c_i(X),U_i(X)]$, where $\tilde c_i(X)$ is the recorded cost, $U_i(X)=\tilde c_i(X)$ if $\delta_i(X)=0$, and $U_i(X)\in(\tilde c_i(X),\infty]$ is a declared upper bound otherwise. Let $\tilde C_X=\sum_i\tilde c_i(X)$ and $U_X=\sum_i U_i(X)$, with $\tilde C_R>0$. Then the set of values of $A_n$ consistent with these bounds is the interval with endpoints
+
+```math
+A^{\mathrm{lo}}=1-\frac{U_L}{\tilde C_R},\qquad A^{\mathrm{hi}}=1-\frac{\tilde C_L}{U_R},
+```
+
+with $A^{\mathrm{lo}}=-\infty$ if $U_L=\infty$ and $A^{\mathrm{hi}}=1$ if $U_R=\infty$; the endpoints are attained when finite and approached otherwise. In particular, if only $R$ is censored then $A^{\mathrm{lo}}=\tilde A_n$, and if only $L$ is censored then $A^{\mathrm{hi}}=\tilde A_n$, which recovers Proposition 6.
+
+</div>
+
+<div class="proof">
+
+*Proof.* $A_n=1-C_L/C_R$ is non-increasing in every $c_i(L)$ and non-decreasing in every $c_i(R)$ (for $C_R>0$). So over the box $\prod_{i,X}[\tilde c_i(X),U_i(X)]$ its infimum is reached at $c(L)=U(L)$, $c(R)=\tilde c(R)$ and its supremum at $c(L)=\tilde c(L)$, $c(R)=U(R)$, taking limits when a bound is infinite. The box is connected and $A_n$ is continuous on it, so every value between the endpoints is attained. The special cases follow by substituting $U_L=\tilde C_L$ or $U_R=\tilde C_R$. ◻
+
+</div>
+
+<div id="cor:tip" class="corollary">
+
+**Corollary 2** (Tipping point). If only $R$ is censored and $\tilde A_n<0$, then $A_n\ge0$ if and only if the reference’s true cost on its censored tasks exceeds its recorded cost there by at least $\tilde C_L-\tilde C_R$.
+
+</div>
+
+<div class="proof">
+
+*Proof.* $A_n\ge0$ is equivalent to $C_R\ge\tilde C_L$. Write $C_R=\tilde C_R+\Delta$, where $\Delta\ge0$ is the excess on censored tasks. ◻
+
+</div>
+
+**Illustration.**
+
+On the compositional curriculum C solved 252 tasks and B 247 in G54, G56 and G57b (246 in G57), so these contrasts are not accuracy-matched. In G57b the five censored B tasks cost $2.84$ s as recorded, with $\tilde C_L=48.37$ s and $\tilde C_R=28.84$ s, summed over seeds (recomputed from `docs/evidence/g57b/comp_total.csv`). By Corollary 2, the sign of $\hat A_{36}=-0.677$ would reverse only if reaching the target on those five tasks would cost B at least $19.53$ s more, that is, a true cost of at least $22.37$ s, about $7.9$ times the $2.84$ s it spent on them before failing. The negative conclusion is therefore robust to censoring unless B’s true cost-to-target on those tasks is extreme. It is not proved, because no upper bound on that cost was declared. On the unrelated curriculum both arms are censored on the same tasks (for example, 2 of 168 in G57b), so without declared upper bounds Proposition 9 gives no finite lower endpoint. The case study therefore reports outcomes beside every contrast, as Definition 11 requires. A jointly-completed-task contrast may be pre-registered as a sensitivity analysis, but it conditions on the outcome and must never be the primary result (Section 8, item 9).
+
+### 11.4 Irrelevant-state scaling
+
+<div id="def:scaling" class="definition">
+
+**Definition 12** (Irrelevant-state scaling ratio). Fix a workload of $T$ tasks and a baseline state. A *padding* of size $N$ adds $N$ stored items that are disjoint from the workload’s vocabulary and never read by its correct solution, while the relevant content, including every relation schema the workload’s search can see, is held fixed. Let $\bar c_s(N)$ be the mean charged cost per workload task in seed $s$. The *irrelevant-state scaling ratio* against baseline padding $N_0$ is
+
+```math
+R_N=\frac1S\sum_{s=1}^S\frac{\bar c_s(N)}{\bar c_s(N_0)},
+```
+
+reported with a seed-bootstrap interval. The learner’s cost is *flat* in irrelevant state up to $N$ if the interval’s upper end is at most a declared tolerance (PacketLM pre-registered $1.25$).
+
+</div>
+
+The baseline must already contain every padding relation; otherwise the padding also changes the relevant hypothesis space. This is why G57b uses $N_0=1000$ ($R^{1\mathrm{k}}_N$) and reports the $N_0=0$ form as secondary (`verify-35bda6b`, Low 1). Averaging per-seed ratios follows the registered rule; a ratio of means is an equally valid choice, but it must be declared.
+
+To connect $R_N$ to $A_n$ we use an explicit model. Let $K_i$ be the size of the continual learner’s stored state after task $i$ (non-decreasing), $r_i=c_i(R)>0$ the reference’s cost, and assume
+
+```math
+c_i(L)=\phi_i\,r_i\,h(K_{i-1}),\qquad i\ge1,\qquad\qquad(A1)
+```
+
+where $h$ is positive and non-decreasing, with $h(K_0)=1$ for the learner’s initial state, and $\phi_i\ge0$ is the learner’s *relevant-work ratio*: what task $i$ would cost $L$, relative to $R$, if no state had accumulated. Under (A1) a padding experiment with fixed workload measures $h(K+N)/h(K+N_0)$, so $R_N$ estimates the inflation $h$ directly. Write $\bar\phi_n=\sum_{i=1}^n\phi_ir_i/\sum_{i=1}^n r_i$, the $r$-weighted mean relevant-work ratio.
+
+<div id="prop:scaling" class="proposition">
+
+**Proposition 10** (Irrelevant-state scaling bounds amortization). Assume (A1).
+
+1.  *Finite horizon.* For every $n\ge1$,
+
+```math
+1-\frac{c_0(L)+h(K_{n-1})\,\bar\phi_n\sum_{i\le n}r_i}{c_0(R)+\sum_{i\le n}r_i}\;\le\;A_n\;\le\;1-\frac{c_0(L)+\bar\phi_n\sum_{i\le n}r_i}{c_0(R)+\sum_{i\le n}r_i}.
+```
+
+2.  *Unbounded inflation rules out amortization.* If $r_i\ge r_{\min}>0$, $\phi_i\ge\phi_{\min}>0$ for all $i$, and $h(K_i)\to\infty$, then $A_n\to-\infty$.
+
+3.  *Bounded inflation permits it.* If $h\le H<\infty$ along the sequence, $c_0(L)<\infty$, $\sum_i r_i=\infty$ and $\limsup_n\bar\phi_n<1/H$, then $\liminf_n A_n\ge 1-H\limsup_n\bar\phi_n>0$.
+
+</div>
+
+<div class="proof">
+
+*Proof.* (i) Since $K$ is non-decreasing and $h$ is non-decreasing with $h(K_0)=1$, we have $1\le h(K_{i-1})\le h(K_{n-1})$ for $1\le i\le n$. Multiply by $\phi_ir_i\ge0$, sum over $i$, add $c_0(L)$, divide by $C_R(n)=c_0(R)+\sum_{i\le n}r_i$, and subtract from $1$. (ii) $c_i(L)/r_i=\phi_ih(K_{i-1})\ge\phi_{\min}h(K_{i-1})\to\infty$. Fix $M>0$ and choose $i_0$ with $c_i(L)\ge Mr_i$ for all $i\ge i_0$. Then $C_L(n)\ge M\sum_{i=i_0}^n r_i$, while $C_R(n)=a+\sum_{i=i_0}^n r_i$ with $a=c_0(R)+\sum_{i<i_0}r_i$ fixed. Because $r_i\ge r_{\min}$, $\sum_{i=i_0}^n r_i\to\infty$, so $\liminf_n C_L(n)/C_R(n)\ge M$. Since $M$ is arbitrary, $C_L(n)/C_R(n)\to\infty$ and $A_n\to-\infty$. (iii) Replace $h(K_{n-1})$ by $H$ in the lower bound of (i). Since $\sum_{i\le n}r_i\to\infty$, the terms $c_0(L)/C_R(n)$ and $c_0(R)/C_R(n)$ vanish, and $\sum_{i\le n}r_i/C_R(n)\to1$. ◻
+
+</div>
+
+Part (ii) is the formal content of the utility problem for growing knowledge. If stored knowledge grows without bound (as it must on an unrelated curriculum), positive asymptotic amortization requires the inflation $h$, and hence $R_N$, to stay *bounded*. Sublinear but unbounded growth, for example $R_N\propto N^{\theta}$ with $0<\theta<1$ or $R_N\propto\log N$, is not sufficient, because every new task carries an irreducible relevant cost $\phi_{\min}r_{\min}$. At finite horizons, (i) shows what sublinear scaling buys: a guarantee $A_n>0$ needs $\bar\phi_n<\bigl(1-c_0(L)/\textstyle\sum_{i\le n}r_i\bigr)/h(K_{n-1})$ when $c_0(R)=0$. Since $h(K_{n-1})\ge R^{1\mathrm{k}}_{N}$ whenever the learner’s state is at least as large as the padded workload state (because $h$ is non-decreasing and $h(K_0)=1$), G57b’s $R^{1\mathrm{k}}_{16000}=2.90$ means a learner that has accumulated 16,000 irrelevant facts could be guaranteed $A_n>0$ by this bound only if its relevant work cost at most $1/2.90\approx0.34$ of the reference’s. Under the G57 engine ($17.48$) the threshold would be $0.057$. (A1) is a modelling assumption, not a measured property. In particular it ignores interactions between relevant work and state size, so these thresholds are illustrations of the bound, not predictions.
+
+### 11.5 Exactness-preserving optimization
+
+<div id="def:exact" class="definition">
+
+**Definition 13** (Observational exactness). Engine $E'$ is *observationally exact* with respect to engine $E$ on a set of sessions if, for each session, the two produce identical reply streams call by call and byte-identical persisted final states.
+
+</div>
+
+<div id="prop:exact" class="proposition">
+
+**Proposition 11** (Exact optimizations are accuracy-matched cost contrasts). Suppose the target indicator $\delta_i$ is a function of the learner’s replies on task $i$, and $E'$ is observationally exact with respect to $E$ on every session of an experiment. Then (i) $\delta_i(E')=\delta_i(E)$ for every task and seed, so the two arms have identical censoring patterns, $A_n(E'\Vert E)$ compares costs at identical accuracy on every task, and every outcome statistic of Definition 11 that depends only on replies and state coincides; and (ii) for any reference $R$ on the same seeds, $1-\hat A(E'\Vert R)=(1-\hat A(E'\Vert E))(1-\hat A(E\Vert R))$. The change in amortization caused by the optimization is therefore entirely a cost effect.
+
+</div>
+
+<div class="proof">
+
+*Proof.* (i) Equal reply streams give equal $\delta_i$, and equal replies and states give equal reply- and state-determined statistics. (ii) This is Proposition 7. ◻
+
+</div>
+
+Exactness must be tested, not assumed. PacketLM’s lean save of G54 matched every registered seed, but the verifier showed it was not exact in general: it reordered dictionary keys, and the engine’s replies could depend on that order. This is why the guard compares replies *and* state bytes, and why adversarial differential tests (for example, 47,105 calls for G57) are required beside the registered seeds.
+
+### 11.6 Reporting standards
+
+The case study suggests the following standards, which strengthen the pitfall list of Section 8. PacketLM adopted them progressively, and all were in force from G57 on (S7 is still pending for G57b).
+
+1.  *Pre-registration.* Commit arms, seeds, contrasts, decision rules, predictions and the instrument version before any registered seed is run, and never edit them afterwards; corrections are appended and labelled.
+
+2.  *Sealed, fresh seeds.* Use new seeds for every registered run, sealed (for example, as committed hashes) before the run. A seed set that has been started is consumed, even if the run is aborted.
+
+3.  *Failure preservation.* A failed run is reported as failed, with no result extracted from it. PacketLM’s G55 run lost its per-arm results when one call exceeded its time limit under heavy machine load. It is recorded as “no registered result”, and its seeds were retired. An aborted G56 start had its partial artefacts deleted unread and its seeds treated as consumed.
+
+4.  *Durable, isolated timing runs.* Write each arm’s results to disk as it finishes. Hold a lock so that no other CPU work runs beside a registered timing run, and record the load average. CPU contrasts are load-sensitive.
+
+5.  *Exactness guards.* Any optimization introduced between experiments must be observationally exact (Definition 13), checked as a run-validity guard and by adversarial differential tests.
+
+6.  *Pinned instrument.* Use the measurement code at a named, unmodified version, here `instrument-v1`, and record its hash in every receipt.
+
+7.  *Independent reproduction.* Have every registered $A$ value and interval recomputed from the committed cost logs by someone other than the experimenter.
+
+8.  *Equal charging and outcome profiles.* Report only protocol-equivalent primary contrasts (Definition 10), print $1-A$ beside $A$ (Remark 2), and report the outcome profile beside every contrast (Definition 11).
+
+## 12. Limitations
+
+$A_n$ depends on declared prices, targets and budgets. We make this explicit rather than removing it, and sensitivity analyses are mandatory. It compares two learners on one task distribution; it is not a measure of general intelligence. Cost-to-target needs a well-defined accuracy, which is harder for open-ended language behaviour than for the structured tasks considered here. Charging storage by holding time is one reasonable convention among several, and others are possible. The novelty criterion is supplied by the experimenter and can be mis-specified. The worked example in Section 9 is tiny and synthetic by design. The case study concerns one system, built in small controlled worlds, measured in CPU time, which is load-sensitive, with $S=7$ seeds per experiment. Its rows use different seeds and engine versions, so trends across rows are descriptive. Several controls of Table 1 and the second-order instruments of Section 5 have not yet been run on it. Its G57b results had not been independently verified at the time of writing. Propositions 8 and 10 rest on explicit models (a fixed per-invocation overhead; the factorization (A1)), and the illustrations built on them are qualitative checks, not fits.
+
+## 13. Conclusion
+
+Learning amortization asks whether past learning pays for future learning once every lifecycle cost is charged at matched accuracy. The metric is simple, but interpreting it needs the properties proved here, especially weighting, asymmetry, asymptotics, break-even and censoring bounds. It also needs controls that separate reuse of real capability from caching, and a second-order analysis that separates learning to learn from accumulation. The first sustained application, to PacketLM, shows why each of these matters. In six pre-registered experiments the metric found no positive amortization. It did find real reuse whose overhead exceeds its savings, a utility problem traceable to maintenance, library scanning and state-proportional work, and a gap that exact engineering narrowed from $18.0\times$ to $3.21\times$ on unrelated tasks without changing a single reply. The same experiments showed that the execution protocol can move the measured cost ratio by an order of magnitude, that unequal completion must be reported and bounded, that $A$ is easily misread, and that irrelevant-state scaling has to stay bounded for amortization to be possible as knowledge grows. We offer the metric and these standards as a measurement protocol to be falsified in practice.
 
 **Acknowledgements.**
 
@@ -447,18 +751,23 @@ Text © 2026 James Jackson, licensed under CC BY 4.0. Code is MIT-licensed.
 
 ## Appendix A. Notation
 
-|                                       |                                                                          |
-|:--------------------------------------|:-------------------------------------------------------------------------|
-| $T_i$, $E_i$                          | task $i$ and its sealed evaluation set                                   |
-| $c_{i,k}$, $c_i$                      | cost of component $k$ on task $i$; total cost of task $i$ ($i=0$: setup) |
-| $C_L(n)$, $C_R(n)$                    | cumulative cost of learner and reference through task $n$                |
-| $A_n$, $a_i$, $A_\infty$, $A^{(k)}_N$ | cumulative, marginal, asymptotic and tail-window amortization            |
-| $n^\star$                             | break-even point (Definition 7)                                          |
-| $D_{n,k}$                             | contribution of component $k$ (Proposition 2)                            |
-| $\alpha_i$, $B_i$, $\delta_i$         | accuracy target, budget, censoring indicator                             |
-| $\ell_n$, $\ell_s$, $\beta$           | log cost ratio; per-seed log ratio; trend slope                          |
-| $\Pi(k)$                              | fork-and-discard probe amortization (Definition 9)                       |
-| $w$                                   | declared price vector over resources $\mathcal{R}$                       |
+|                                                |                                                                                                        |
+|:-----------------------------------------------|:-------------------------------------------------------------------------------------------------------|
+| $T_i$, $E_i$                                   | task $i$ and its sealed evaluation set                                                                 |
+| $c_{i,k}$, $c_i$                               | cost of component $k$ on task $i$; total cost of task $i$ ($i=0$: setup)                               |
+| $C_L(n)$, $C_R(n)$                             | cumulative cost of learner and reference through task $n$                                              |
+| $A_n$, $a_i$, $A_\infty$, $A^{(k)}_N$          | cumulative, marginal, asymptotic and tail-window amortization                                          |
+| $n^\star$                                      | break-even point (Definition 7)                                                                        |
+| $D_{n,k}$                                      | contribution of component $k$ (Proposition 2)                                                          |
+| $\alpha_i$, $B_i$, $\delta_i$                  | accuracy target, budget, censoring indicator                                                           |
+| $\ell_n$, $\ell_s$, $\beta$                    | log cost ratio; per-seed log ratio; trend slope                                                        |
+| $\Pi(k)$                                       | fork-and-discard probe amortization (Definition 9)                                                     |
+| $w$                                            | declared price vector over resources $\mathcal{R}$                                                     |
+| $\rho_n=1-A_n$                                 | cost ratio $C_L(n)/C_R(n)$ (Remark 2)                                                                  |
+| $f$, $\nu_X$, $W_X$; $\mu$, $\omega$           | per-invocation overhead, invocations, work above the floor; invocation and work ratios (Proposition 8) |
+| $U_i(X)$, $A^{\mathrm{lo}}$, $A^{\mathrm{hi}}$ | upper bound on a censored cost; identification interval (Proposition 9)                                |
+| $R_N$, $R^{1\mathrm{k}}_N$                     | irrelevant-state scaling ratio against baseline padding $0$ or $1000$ (Definition 12)                  |
+| $K_i$, $h$, $\phi_i$, $\bar\phi_n$             | stored-state size, inflation factor, relevant-work ratio and its weighted mean (Proposition 10)        |
 
 ## References
 

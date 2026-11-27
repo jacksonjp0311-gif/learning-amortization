@@ -93,3 +93,50 @@ was re-run or re-derived, not taken from the notes above.
 2. Not re-checked against primary records: Thrun & Pratt, Chen & Liu, Efron & Tibshirani and Gershman & Goodman (the escholarship page did not load from the review machine), plus the Minton utility formula, which was taken from the paper's description and agrees with standard secondary accounts.
 3. Items 1–3, 5 and 6 of the earlier "Left open" list still stand.
 
+
+## Review of the v0.2 revision (PacketLM case study and Section 11)
+
+**Who reviewed.** The same AI assistant that wrote the revision, in a separate pass after drafting, told to treat every new number and proof as wrong until checked against the PacketLM sources. This is *not* an independent human review; a second reader who did not write it is still recommended.
+
+**Scope.** New Sections 10 (Empirical case study: PacketLM) and 11 (Methodological lessons, formalized), the revised abstract, contributions, pitfalls 10–12, limitations, conclusion and notation; `amortization/diagnostics.py`; `case_study/packetlm/`; the README case-study section.
+
+**Instrument pin.** `git diff 70297af -- amortization/metric.py amortization/stats.py amortization/transfer.py amortization/__main__.py amortization/__init__.py` is empty. New code is only in `amortization/diagnostics.py`, which nothing in the old modules imports. Tag `instrument-v1` (annotated) names `70297af`. The 37 original tests pass unchanged; the suite is now 49 (9 in `test_diagnostics.py`, 3 in `test_case_study.py`).
+
+### Mathematics
+
+| Item | Check | Result |
+|---|---|---|
+| Remark 2 (cost ratio $1-A$) | Recomputed from the G51 totals in the cost log: 215.77 s / 55.73 s = 3.872, $A=-2.872$, $\ell=-1.354$, $A(\mathrm B\Vert\mathrm C)=0.742$ | Correct |
+| Prop. 7 (chain rule) | Proof re-derived (ratios of sums telescope). Checked numerically on random data and on G57b: Cj‖Ci‖Bi‖Bj reproduces $A(\mathrm{Cj}\Vert\mathrm{Bj})$ to machine precision | Correct. Holds for point estimates only, which the text says |
+| Prop. 8 (protocol dependence) | Mediant identity, derivative sign $\nu_LW_R-W_L\nu_R$, limits and sign-flip condition re-derived; tested for monotonicity on a grid and for a sign flip | Correct under its stated model ($\nu$, $W$ independent of $f$). The G54→G56 illustration is labelled qualitative because the long-lived engine also changes $W$ and the seeds differ |
+| Prop. 9 (partial identification) | Monotonicity in every coordinate plus connectedness of the box gives the interval; infinite bounds handled by limits; special cases recover Prop. 6. Sharpness tested with 500 random interior points | Correct |
+| Cor. 2 (tipping point) | Direct algebra | Correct |
+| Prop. 10 (irrelevant-state scaling) | (i) termwise bounds $1\le h(K_{i-1})\le h(K_{n-1})$; (ii) an $\varepsilon$–$M$ argument needing only $r_i\ge r_{\min}$ and $\phi_i\ge\phi_{\min}$; (iii) limit of (i). Bounds tested on a simulated sequence; (ii) illustrated with $h\propto\sqrt n$ | Correct under (A1). **The brief asked for a link between *sublinear* $R$ and positive $A$. The provable statement is stronger and less favourable:** with unbounded knowledge growth and an irreducible per-task cost, *bounded* $R$ is necessary, and sublinear-but-unbounded $R$ is not sufficient. The text says so |
+| Prop. 11 (exactness) | Follows from Prop. 7 and from $\delta_i$ being a function of replies | Correct. Wording fixed in review: exactness gives *identical* censoring patterns, not necessarily "accuracy-matched" in the sense of Def. 11 (which needs $\delta_i=0$) |
+
+### Claims against sources
+
+Every number in Sections 10–11 was traced to PacketLM `g44-canonical-engine` at `8994490` or to a `VERIFY_*.md` report (table in `case_study/packetlm/SOURCES.md`). `python case_study/packetlm/reproduce.py` recomputes, with the pinned instrument and 5000 resamples, all 42 $A$ values and intervals quoted, the 9 scaling ratios (with PacketLM's registered bootstrap, reproduced verbatim) and 9 derived numbers. Result: **60/60 match.** PacketLM's docs round the instrument's 4-decimal output a second time (e.g. −2.5605 printed as −2.561), so the tolerance is half a unit in the printed place plus 0.00005.
+
+### Corrections made during this review
+
+| # | Finding | Fix |
+|---|---|---|
+| V1 | The brief gave G57's $R_{16000}$ as 91.2. G57's registered value is **91.9 [86.5, 95.7]** (seeds 221–227); 91.2 [81.6, 100.0] is the G57 engine re-run inside G57b on seeds 231–237 | Table 5 uses the same-seed G57b values (91.2, 17.48); the caption also gives 91.9 |
+| V2 | "252 vs 247" holds for G54, G56 and G57b only. G51 is 252 vs 249, G53 252 vs 251, G57 252 vs 246 | All six stated |
+| V3 | G57b.md says "0 censored outside F", but its cost logs mark B's 5 unsolved compositional tasks, and 2 unrelated tasks in every arm, as censored. The doc counts run-limit censoring; the CSV uses the target definition the instrument applies | The paper uses the instrument's (target) definition and says why the compositional $A$ values are lower bounds |
+| V4 | The engine does not split CPU into the components of Def. 2, so the four-way cost decomposition cannot be computed with Prop. 2 | Presented as a call-type and profile decomposition, with that caveat stated |
+| V5 | A draft said C and P "cost the same within noise" on unrelated tasks. Two intervals (G54 −0.015 [−0.032, −0.003]; G57b −0.020 [−0.037, −0.004]) exclude 0 | Now "differ by at most 2.4%"; all six values added to the reproduction script |
+| V6 | The original misreading was "e^2.9 ≈ 18×" (G51.md), not e^2.87 | Quoted exactly |
+| V7 | A draft said every persistent arm had 0 wrong qualified answers; the guards cover the library learner (C, plus Cb/Cl etc.), not P in every experiment | Restricted to the library learner |
+| V8 | hyperref warnings from math in a section title; one overfull line | `\texorpdfstring`; allowed breaks in the script path |
+
+### Claims that could not be sourced
+
+None of the numbers in the paper are unsourced. Two items are *not* independently verified, and the paper says so: G57b has no verification report among the sources (a verification was reported to be running, but no report was available), and the lock times of registered runs are the experimenter's statements (verify-35bda6b, Low 2).
+
+### Build
+
+`latexmk` clean: 0 undefined references, 0 overfull boxes, 0 warnings other than package-info lines; 23 pages (was 14). Markdown regenerated with `scripts/build_markdown.py`, which now maps remark labels and counts tabularx columns.
+
+**Left open.** The controls of Table 1 beyond empty-memory, primitive-only and frozen, and the second-order instruments of Section 5, have not been run on PacketLM. The model assumptions of Props. 8 and 10 are not tested against data beyond the qualitative checks shown.
